@@ -1,13 +1,9 @@
-[package]
-name = "sparks_of_labour_game"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+    "client",
+    "entity_server",
+    "world_server",
+]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-bytemuck = "1"
-glium = "0.32.1"
-glfw = "0.45.0"
-imagine = "0.0.5"
-nalgebra = "0.31.4"
+[workspace.dependencies]
+zmq = "0.10.0"

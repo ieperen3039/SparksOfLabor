@@ -1,0 +1,13 @@
+[package]
+name = "sol_client"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytemuck = "1"
+glium = "0.32.1"
+glfw = "0.45.0"
+imagine = "0.0.5"
+nalgebra = "0.31.4"

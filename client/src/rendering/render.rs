@@ -4,9 +4,31 @@ use glium::{Program, Surface};
 
 extern crate glium;
 
-struct RenderSequence {
+pub struct Drawable {}
+
+pub struct RenderSequence {
+    // the shader to use
     shader: glium::Program,
-    // draw_parameters: glium::DrawParameters
+
+    // How the fragment will interact with the depth buffer.
+    pub depth: glium::draw_parameters::Depth,
+
+    // How the fragment will interact with the stencil buffer.
+    pub stencil: glium::draw_parameters::Stencil,
+
+    // The effect that the GPU will use to merge the existing pixel with the pixel that is
+    // being written.
+    pub blend: glium::draw_parameters::Blend,
+
+    // If specified, only pixels in this rect will be displayed. Default is `None`.
+    //
+    // This is different from a viewport. The image will stretch to fill the viewport, but
+    // not the scissor box.
+    pub scissor: Option<glium::Rect>,
+
+    // If set, the time it took for the GPU to execute this draw command is added to the total
+    // stored inside the `TimeElapsedQuery`.
+    pub time_elapsed_query: Option<glium::draw_parameters::TimeElapsedQuery>,
 }
 
 pub struct Camera {}
@@ -40,7 +62,21 @@ impl RenderEngine {
         };
     }
 
-    pub fn update_renderLoop(
+    pub fn add_sequence(
+        mut self,
+        shader: Program
+    ) {
+        self.render_sequences.push(RenderSequence {
+            shader,
+            depth: Default::default(),
+            stencil: Default::default(),
+            blend: glium::Blend::alpha_blending(),
+            scissor: None,
+            time_elapsed_query: None,
+        });
+    }
+
+    pub fn update_render_loop(
         &self,
         current_time: Duration,
     ) {
@@ -67,7 +103,7 @@ impl RenderEngine {
 }
 
 impl RenderSequence {
-    fn new(
+    pub fn new_from_directory(
         display: &glium::Display,
         directory: &std::path::Path,
     ) -> Result<RenderSequence, std::io::Error> {
@@ -108,7 +144,14 @@ impl RenderSequence {
         )
         .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err.to_string()))?;
 
-        return Ok(RenderSequence { shader });
+        return Ok(RenderSequence {
+            shader,
+            depth: Default::default(),
+            stencil: Default::default(),
+            blend: glium::Blend::alpha_blending(),
+            scissor: None,
+            time_elapsed_query: None,
+        });
     }
 
     fn draw(
