@@ -3,7 +3,5 @@ members = [
     "client",
     "entity_server",
     "world_server",
+    "connection_server"
 ]
-
-[workspace.dependencies]
-zmq = "0.10.0"

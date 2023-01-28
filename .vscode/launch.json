@@ -1,0 +1,119 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug 'sol_client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=sol_client",
+                    "--package=sol_client"
+                ],
+                "filter": {
+                    "name": "sol_client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug 'sol_entity_server'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=sol_entity_server",
+                    "--package=sol_entity_server"
+                ],
+                "filter": {
+                    "name": "sol_entity_server",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug 'sol_world_server'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=sol_world_server",
+                    "--package=sol_world_server"
+                ],
+                "filter": {
+                    "name": "sol_world_server",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'sol_client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=sol_client",
+                    "--package=sol_client"
+                ],
+                "filter": {
+                    "name": "sol_client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'sol_entity_server'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=sol_entity_server",
+                    "--package=sol_entity_server"
+                ],
+                "filter": {
+                    "name": "sol_entity_server",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'sol_world_server'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=sol_world_server",
+                    "--package=sol_world_server"
+                ],
+                "filter": {
+                    "name": "sol_world_server",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

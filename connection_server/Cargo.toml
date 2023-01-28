@@ -1,10 +1,9 @@
 [package]
-name = "sol_entity_server"
+name = "connection_server"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nalgebra = "0.31.4"
 zmq = "0.10.0"
