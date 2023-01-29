@@ -1,10 +1,10 @@
 [package]
-name = "connection_server"
+name = "sol_protocol"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zmq = "0.10.0"
 serde = { version = "^1.0", features = ["derive"] }
+sol_voxel_engine = { path = "../voxel_engine", version = "*" }

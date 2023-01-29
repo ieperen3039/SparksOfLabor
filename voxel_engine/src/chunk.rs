@@ -1,15 +1,28 @@
-use crate::vector_alias::Coordinate;
+use serde::{Serialize, Deserialize};
+
+use crate::{vector_alias::Coordinate, voxel_index_error::VoxelIndexError};
 use std::collections::HashMap;
 
+#[typetag::serde]
 pub trait AdvancedVoxel {}
 
+// #[derive(Serialize, Deserialize)]
+// struct Container {
+//     elements : HashSet<(u32, u32)>
+// }
+
+// #[typetag::serde]
+// impl AdvancedVoxel for Container {}
+
+#[derive(Serialize, Deserialize)]
 struct Chunk2 {
-    grid: [i16; 4 * 4 * 4],
-    advanced_map: HashMap<i16, Box<dyn AdvancedVoxel>>,
+    grid: [[[i16; 4]; 4]; 4],
+    advanced_map: Vec<(i16, Box<dyn AdvancedVoxel>)>,
 }
 
+#[derive(Serialize, Deserialize)]
 struct Chunk4 {
-    grid: [Chunk2; 4 * 4 * 4],
+    grid: [[[Chunk2; 4]; 4]; 4],
     zero_point: Coordinate,
 }
 
@@ -17,10 +30,6 @@ struct VoxelProperties {}
 
 struct VoxelTypeDefinitions {
     map: HashMap<i16, VoxelProperties>,
-}
-
-struct VectorOutOfRangeError {
-    value: Coordinate,
 }
 
 fn to_internal(
@@ -53,7 +62,11 @@ fn to_internal(
     Some(internal_coord)
 }
 
-fn to_internal_unchecked(coord: Coordinate, zero_coord: Coordinate, internal_step: i32) -> Coordinate {
+fn to_internal_unchecked(
+    coord: Coordinate,
+    zero_coord: Coordinate,
+    internal_step: i32,
+) -> Coordinate {
     let relative_coord = coord - zero_coord;
     let internal_coord = relative_coord / internal_step;
     internal_coord
@@ -64,22 +77,20 @@ impl Chunk4 {
         &self,
         definitions: &'a VoxelTypeDefinitions,
         coord: Coordinate,
-    ) -> Result<&'a VoxelProperties, VectorOutOfRangeError> {
+    ) -> Result<&'a VoxelProperties, VoxelIndexError> {
         let internal4 = to_internal(coord, self.zero_point, 4, 4)
-            .ok_or(VectorOutOfRangeError { value: coord })?;
+            .ok_or(VoxelIndexError { value: coord })?;
 
-        let index4 = internal4.x + internal4.y * 4 + internal4.z * 4 * 4;
-        let chunk2 = &self.grid[index4 as usize];
+        let chunk2 = &self.grid[internal4.x as usize][internal4.y as usize][internal4.z as usize];
 
         let internal2 = to_internal(coord, self.zero_point + internal4 * 4, 4, 1)
             .expect("wrong subchunk aquired");
 
-        let index2 = internal2.x + internal2.y * 4 + internal2.z * 4 * 4;
-        let voxel = chunk2.grid[index2 as usize];
+        let voxel = chunk2.grid[internal2.x as usize][internal2.y as usize][internal2.z as usize];
 
         definitions
             .map
             .get(&voxel)
-            .ok_or(VectorOutOfRangeError { value: coord })
+            .ok_or(VoxelIndexError { value: coord })
     }
 }

@@ -1,7 +1,9 @@
 [workspace]
 members = [
+    "voxel_engine",
+    "protocol",
     "client",
     "entity_server",
     "world_server",
-    "connection_server"
+    "connection_server",
 ]
