@@ -1,3 +1,5 @@
 /target
 /bin
-libzmq/libzmq.dll
+/libzmq/libzmq.dll
+*.bkp
+*.dtmp

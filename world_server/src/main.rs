@@ -10,11 +10,11 @@ extern crate sol_voxel_engine;
 fn main() {
     println!("World server: online");
     
-    let handler = ReplyLoop::new("tcp://127.0.0.1:60265", handle);
+    let handler = ReplyLoop::new("tcp://127.0.0.1:60265", handle_message);
 
     println!("World server: offline");
 }
 
-fn handle(type_value : WorldServerReq, msg : zmq::Message) -> (WorldServerRep, zmq::Message) {
-
+fn handle_message(type_value : WorldServerReq, msg : zmq::Message) -> (WorldServerRep, zmq::Message) {
+    
 }

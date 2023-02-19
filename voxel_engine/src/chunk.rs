@@ -1,35 +1,81 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{vector_alias::Coordinate, voxel_index_error::VoxelIndexError};
+use crate::{vector_alias::Coordinate, voxel_index_error::VoxelIndexError, block_types::BlockType};
 use std::collections::HashMap;
 
 #[typetag::serde]
-pub trait AdvancedVoxel {}
+pub trait AdvancedVoxel {
+    fn get_block_id(&self) -> BlockType;
+}
 
 // #[derive(Serialize, Deserialize)]
 // struct Container {
-//     elements : HashSet<(u32, u32)>
+//     elements : u32
 // }
 
 // #[typetag::serde]
-// impl AdvancedVoxel for Container {}
+// impl AdvancedVoxel for Container {
+//     fn get_block_id(&self) -> u32 {
+//         return 0;
+//     }
+// }
+
+// could be a typedef
+#[derive(Serialize, Deserialize)]
+struct SimpleVoxel(BlockType);
 
 #[derive(Serialize, Deserialize)]
-struct Chunk2 {
-    grid: [[[i16; 4]; 4]; 4],
-    advanced_map: Vec<(i16, Box<dyn AdvancedVoxel>)>,
+enum Voxel {
+    // bitfield of type + variant + rotation
+    Simple(SimpleVoxel),
+    // reference to heap-allocated voxel definition
+    Advanced(Box<dyn AdvancedVoxel>),
+}
+
+enum VoxelRef<'a> {
+    // bitfield of type + variant + rotation
+    Simple(&'a SimpleVoxel),
+    // reference to heap-allocated voxel definition
+    Advanced(&'a dyn AdvancedVoxel),
 }
 
 #[derive(Serialize, Deserialize)]
+struct Grid444<T> {
+    grid: [[[T; 4]; 4]; 4],
+}
+
+#[derive(Serialize, Deserialize)]
+enum Chunk4Grid {
+    // a chunk containing just one type of block (air, slate)
+    Uniform(SimpleVoxel),
+    // a chunk containing only simple voxels
+    Simple(Grid444<SimpleVoxel>),
+    // any other chunk containing any combination of voxel types
+    Detailed(Box<Grid444<Voxel>>),
+}
+
 struct Chunk4 {
-    grid: [[[Chunk2; 4]; 4]; 4],
-    zero_point: Coordinate,
+    voxels: Chunk4Grid,
+}
+
+enum Chunk16Grid {
+    // a chunk16 containing just one type of block (air, slate)
+    Uniform(SimpleVoxel),
+    // a chunk16 consisting only out of simple chunks
+    Simple(Grid444<Grid444<SimpleVoxel>>),
+    // any combination of chunks
+    Detailed(Grid444<Chunk4>),
+}
+
+struct Chunk16 {
+    voxels: Chunk16Grid,
+    zero_coordinate: Coordinate,
 }
 
 struct VoxelProperties {}
 
 struct VoxelTypeDefinitions {
-    map: HashMap<i16, VoxelProperties>,
+    map: HashMap<BlockType, VoxelProperties>,
 }
 
 fn to_internal(
@@ -72,25 +118,88 @@ fn to_internal_unchecked(
     internal_coord
 }
 
-impl Chunk4 {
+impl Chunk16 {
     fn get_properties<'a>(
         &self,
         definitions: &'a VoxelTypeDefinitions,
         coord: Coordinate,
     ) -> Result<&'a VoxelProperties, VoxelIndexError> {
-        let internal4 = to_internal(coord, self.zero_point, 4, 4)
-            .ok_or(VoxelIndexError { value: coord })?;
-
-        let chunk2 = &self.grid[internal4.x as usize][internal4.y as usize][internal4.z as usize];
-
-        let internal2 = to_internal(coord, self.zero_point + internal4 * 4, 4, 1)
-            .expect("wrong subchunk aquired");
-
-        let voxel = chunk2.grid[internal2.x as usize][internal2.y as usize][internal2.z as usize];
+        let voxel = self.get_block_type_absolute(coord)?;
 
         definitions
             .map
             .get(&voxel)
             .ok_or(VoxelIndexError { value: coord })
+    }
+
+    fn get_block_type_absolute(
+        &self,
+        coord: Coordinate,
+    ) -> Result<BlockType, VoxelIndexError> {
+        let internal4 = to_internal(coord, self.zero_coordinate, 4, 4)
+            .ok_or(VoxelIndexError { value: coord })?;
+
+        match &self.voxels {
+            Chunk16Grid::Uniform(SimpleVoxel(voxel_type)) => Ok(*voxel_type),
+            Chunk16Grid::Simple(voxels) => {
+                let grid =
+                    &voxels.grid[internal4.x as usize][internal4.y as usize][internal4.z as usize];
+                let internal2 =
+                    to_internal_unchecked(coord, self.zero_coordinate + internal4 * 4, 1);
+                let SimpleVoxel(voxel_type) =
+                    grid.grid[internal2.x as usize][internal2.y as usize][internal2.z as usize];
+                Ok(voxel_type)
+            },
+            Chunk16Grid::Detailed(voxels) => {
+                let chunk4 =
+                    &voxels.grid[internal4.x as usize][internal4.y as usize][internal4.z as usize];
+                let coord = to_internal_unchecked(coord, self.zero_coordinate + internal4 * 4, 1);
+
+                Ok(chunk4.get_block_type_relative(coord))
+            },
+        }
+    }
+}
+
+impl Chunk4 {
+    fn get_voxel(
+        &self,
+        coord: Coordinate,
+    ) -> VoxelRef {
+        match &self.voxels {
+            Chunk4Grid::Uniform(voxel) => VoxelRef::Simple(voxel),
+            Chunk4Grid::Simple(voxels) => {
+                let voxel = &voxels.grid[coord.x as usize][coord.y as usize][coord.z as usize];
+                VoxelRef::Simple(voxel)
+            },
+            Chunk4Grid::Detailed(voxels) => {
+                let voxel_impl = &voxels.grid[coord.x as usize][coord.y as usize][coord.z as usize];
+                match voxel_impl {
+                    Voxel::Simple(voxel) => VoxelRef::Simple(voxel),
+                    Voxel::Advanced(voxel_box) => VoxelRef::Advanced(voxel_box.as_ref()),
+                }
+            },
+        }
+    }
+
+    fn get_block_type_relative(
+        &self,
+        coord: Coordinate,
+    ) -> BlockType {
+        match &self.voxels {
+            Chunk4Grid::Uniform(SimpleVoxel(voxel_type)) => *voxel_type,
+            Chunk4Grid::Simple(voxels) => {
+                let SimpleVoxel(voxel_type) =
+                    voxels.grid[coord.x as usize][coord.y as usize][coord.z as usize];
+                voxel_type
+            },
+            Chunk4Grid::Detailed(voxels) => {
+                let voxel_impl = &voxels.grid[coord.x as usize][coord.y as usize][coord.z as usize];
+                match voxel_impl {
+                    Voxel::Simple(SimpleVoxel(voxel_type)) => *voxel_type,
+                    Voxel::Advanced(advanced_voxel) => advanced_voxel.get_block_id(),
+                }
+            },
+        }
     }
 }

@@ -2,22 +2,26 @@ pub mod messages {
     use serde::{Serialize, Deserialize};
     use sol_voxel_engine::vector_alias::Coordinate;
 
-    pub const VERSION : &str = "0.1"; // this could obviously be better
+    pub const VERSION_STRING : &str = "0.1"; // this could obviously be better
 
     #[derive(Serialize, Deserialize)]
     pub enum General {
         Ping, 
         Pong,
-        ProtocolConnect(String /* = VERSION */, String /* Entity to connect to */),
+        ProtocolConnect { version : String, connection_name : String},
     }
 
-    pub const ENTITY_WORLD_SERVER_REQ : &str = "WorldServerReq";
+    pub const CONNECTION_NAME_WORLD_SERVER_REQ : &str = "WorldServerRequest";
+
+    #[derive(Serialize, Deserialize)]
     pub enum WorldServerReq {
-        ContentChunk2(Coordinate)
+        ContentChunk4(Coordinate)
     }
 
-    pub const ENTITY_WORLD_SERVER_REP : &str = "WorldServerRep";
+    pub const CONNECTION_NAME_WORLD_SERVER_REP : &str = "WorldServerReply";
+    
+    #[derive(Serialize, Deserialize)]
     pub enum WorldServerRep {
-        ContentChunk2(Coordinate)
+        ContentChunk4(Coordinate, Chunk4)
     }
 }
