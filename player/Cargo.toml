@@ -1,11 +1,16 @@
 [package]
-name = "sol_client"
-version = "0.1.0"
+name = "sol_player"
+version = "0.0.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sol_player_data_messages = { path = "../player_data_messages", version = "*" }
+sol_game_engine = { path = "../game_engine", version = "*" }
+sol_world_messages = { path = "../world_messages", version = "*" }
+sol_entity_messages = { path = "../entity_messages", version = "*" }
+
 nalgebra = { version = "0.31.4", features = ["serde-serialize"] }
 serde = { version = "^1.0", features = ["derive"] }
 bytemuck = "1"
@@ -13,6 +18,5 @@ glium = "0.32.1"
 glfw = "0.45.0"
 imagine = "0.0.5"
 zmq = "0.10.0"
-sol_voxel_engine = { path = "../voxel_engine", version = "*" }
 rand = "0.8.5"
 simple-error = "0.2.3"

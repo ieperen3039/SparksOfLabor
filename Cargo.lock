@@ -179,14 +179,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "connection_server"
-version = "0.1.0"
-dependencies = [
- "serde",
- "zmq",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1477,8 +1469,87 @@ dependencies = [
 ]
 
 [[package]]
-name = "sol_client"
-version = "0.1.0"
+name = "sol_address_server"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "typetag",
+]
+
+[[package]]
+name = "sol_entity_lib"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "typetag",
+]
+
+[[package]]
+name = "sol_entity_messages"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "sol_entity_lib",
+ "typetag",
+]
+
+[[package]]
+name = "sol_entity_server"
+version = "0.0.1"
+dependencies = [
+ "nalgebra",
+ "serde",
+ "sol_entity_lib",
+ "sol_entity_messages",
+ "zmq",
+]
+
+[[package]]
+name = "sol_game_engine"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "sol_entity_lib",
+ "sol_voxel_lib",
+ "typetag",
+]
+
+[[package]]
+name = "sol_load_balancer"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "sol_address_server",
+ "sol_entity_messages",
+ "sol_login_messages",
+ "sol_world_messages",
+ "typetag",
+]
+
+[[package]]
+name = "sol_login_messages"
+version = "0.0.1"
+dependencies = [
+ "bincode",
+ "serde",
+ "simple-error",
+ "typetag",
+ "zmq",
+]
+
+[[package]]
+name = "sol_login_server"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "sol_address_server",
+ "sol_login_messages",
+ "typetag",
+]
+
+[[package]]
+name = "sol_player"
+version = "0.0.1"
 dependencies = [
  "bytemuck",
  "glfw",
@@ -1488,24 +1559,47 @@ dependencies = [
  "rand",
  "serde",
  "simple-error",
- "sol_voxel_engine",
+ "sol_entity_messages",
+ "sol_game_engine",
+ "sol_player_data_messages",
+ "sol_world_messages",
  "zmq",
 ]
 
 [[package]]
-name = "sol_entity_server"
-version = "0.1.0"
+name = "sol_player_data_messages"
+version = "0.0.1"
 dependencies = [
- "nalgebra",
  "serde",
- "zmq",
+ "typetag",
 ]
 
 [[package]]
-name = "sol_protocol"
+name = "sol_player_data_server"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "sol_address_server",
+ "sol_login_server",
+ "sol_player_data_messages",
+ "typetag",
+]
+
+[[package]]
+name = "sol_player_position_server"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "sol_address_server",
+ "sol_login_messages",
+ "sol_player_data_messages",
+ "typetag",
+]
+
+[[package]]
+name = "sol_voxel_lib"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "nalgebra",
  "serde",
  "simple-error",
@@ -1513,12 +1607,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "sol_voxel_engine"
-version = "0.1.0"
+name = "sol_world_messages"
+version = "0.0.1"
 dependencies = [
- "nalgebra",
  "serde",
- "simple-error",
+ "sol_voxel_lib",
  "typetag",
 ]
 
@@ -1529,8 +1622,8 @@ dependencies = [
  "nalgebra",
  "serde",
  "simple-error",
- "sol_protocol",
- "sol_voxel_engine",
+ "sol_voxel_lib",
+ "sol_world_messages",
  "zmq",
 ]
 

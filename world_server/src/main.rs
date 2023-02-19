@@ -1,11 +1,10 @@
-use sol_protocol::messages::{WorldServerReq, WorldServerRep};
+use sol_world_messages::{WorldServerReq, WorldServerRep};
 
 use crate::network::ReplyLoop;
 
 mod network;
 
 extern crate zmq;
-extern crate sol_voxel_engine;
 
 fn main() {
     println!("World server: online");

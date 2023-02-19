@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{vector_alias::Coordinate, voxel_index_error::VoxelIndexError, block_types::BlockType};
-use std::collections::HashMap;
+use crate::{vector_alias::Coordinate, voxel_index_error::VoxelIndexError, block_types::BlockType, voxel_properties::{VoxelTypeDefinitions, VoxelProperties}};
 
 #[typetag::serde]
 pub trait AdvancedVoxel {
@@ -22,17 +21,17 @@ pub trait AdvancedVoxel {
 
 // could be a typedef
 #[derive(Serialize, Deserialize)]
-struct SimpleVoxel(BlockType);
+pub struct SimpleVoxel(BlockType);
 
 #[derive(Serialize, Deserialize)]
-enum Voxel {
+pub enum Voxel {
     // bitfield of type + variant + rotation
     Simple(SimpleVoxel),
     // reference to heap-allocated voxel definition
     Advanced(Box<dyn AdvancedVoxel>),
 }
 
-enum VoxelRef<'a> {
+pub enum VoxelRef<'a> {
     // bitfield of type + variant + rotation
     Simple(&'a SimpleVoxel),
     // reference to heap-allocated voxel definition
@@ -54,10 +53,12 @@ enum Chunk4Grid {
     Detailed(Box<Grid444<Voxel>>),
 }
 
+#[derive(Serialize, Deserialize)]
 struct Chunk4 {
     voxels: Chunk4Grid,
 }
 
+#[derive(Serialize, Deserialize)]
 enum Chunk16Grid {
     // a chunk16 containing just one type of block (air, slate)
     Uniform(SimpleVoxel),
@@ -67,15 +68,10 @@ enum Chunk16Grid {
     Detailed(Grid444<Chunk4>),
 }
 
-struct Chunk16 {
+#[derive(Serialize, Deserialize)]
+pub struct Chunk16 {
     voxels: Chunk16Grid,
     zero_coordinate: Coordinate,
-}
-
-struct VoxelProperties {}
-
-struct VoxelTypeDefinitions {
-    map: HashMap<BlockType, VoxelProperties>,
 }
 
 fn to_internal(
@@ -126,9 +122,7 @@ impl Chunk16 {
     ) -> Result<&'a VoxelProperties, VoxelIndexError> {
         let voxel = self.get_block_type_absolute(coord)?;
 
-        definitions
-            .map
-            .get(&voxel)
+        definitions.get_properties_of(voxel)
             .ok_or(VoxelIndexError { value: coord })
     }
 

@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sol_voxel_lib = { path = "../voxel_lib", version = "*" }
+sol_world_messages = { path = "../world_messages", version = "*" }
+
 nalgebra = { version = "0.31.4", features = ["serde-serialize"] }
 serde = { version = "^1.0", features = ["derive"] }
 zmq = "0.10.0"
-sol_voxel_engine = { path = "../voxel_engine", version = "*" }
-sol_protocol = { path = "../protocol", version = "*" }
 simple-error = "0.2.3"

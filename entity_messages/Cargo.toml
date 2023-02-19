@@ -1,0 +1,10 @@
+[package]
+name = "sol_entity_messages"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+sol_entity_lib = { path = "../entity_lib", version = "*" }
+
+serde = { version = "^1.0", features = ["derive"] }
+typetag = "0.2"

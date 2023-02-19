@@ -1,9 +1,18 @@
 [workspace]
 members = [
-    "voxel_engine",
-    "protocol",
-    "client",
+    "address_server",
+    "entity_lib",
+    "entity_messages",
     "entity_server",
+    "game_engine",
+    "load_balancer",
+    "login_messages",
+    "login_server",
+    "player",
+    "player_data_messages",
+    "player_data_server",
+    "player_position_server",
+    "voxel_lib",
+    "world_messages",
     "world_server",
-    "connection_server",
 ]

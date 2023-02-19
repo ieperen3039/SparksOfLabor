@@ -5,5 +5,5 @@ use serde::{Serialize, Deserialize};
 pub enum BlockType {
     Null = 0,
     Air = 1,
-    PureSimple
+    SolidMana
 }

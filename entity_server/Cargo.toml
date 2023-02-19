@@ -1,11 +1,12 @@
 [package]
 name = "sol_entity_server"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+sol_entity_lib = { path = "../entity_lib", version = "*" }
+sol_entity_messages = { path = "../entity_messages", version = "*" }
+
 nalgebra = { version = "0.31.4", features = ["serde-serialize"] }
 serde = { version = "^1.0", features = ["derive"] }
 zmq = "0.10.0"
