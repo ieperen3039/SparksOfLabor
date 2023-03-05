@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sol_voxel_lib = { path = "../voxel_lib", version = "*" }
 sol_player_data_messages = { path = "../player_data_messages", version = "*" }
 sol_game_engine = { path = "../game_engine", version = "*" }
 sol_world_messages = { path = "../world_messages", version = "*" }

@@ -14,6 +14,5 @@ fn main() {
     println!("World server: offline");
 }
 
-fn handle_message(type_value : WorldServerReq, msg : zmq::Message) -> (WorldServerRep, zmq::Message) {
-    
+fn handle_message(type_value : WorldServerReq) -> WorldServerRep {
 }

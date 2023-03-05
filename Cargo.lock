@@ -1562,6 +1562,7 @@ dependencies = [
  "sol_entity_messages",
  "sol_game_engine",
  "sol_player_data_messages",
+ "sol_voxel_lib",
  "sol_world_messages",
  "zmq",
 ]
@@ -1619,6 +1620,7 @@ dependencies = [
 name = "sol_world_server"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "nalgebra",
  "serde",
  "simple-error",

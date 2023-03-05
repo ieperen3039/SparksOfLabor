@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-// #extern crate glfw;
-extern crate sol_voxel_engine;
+
+mod rendering;
 
 extern crate zmq;
 
