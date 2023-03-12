@@ -6,7 +6,7 @@ hex_literal_case = "Upper"
 match_block_trailing_comma = true
 newline_style = "Unix"
 reorder_impl_items = true
-reorder_imports= true
+reorder_imports = true
 group_imports = "StdExternalCrate"
 wrap_comments = true
 

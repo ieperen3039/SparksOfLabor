@@ -14,10 +14,9 @@ sol_entity_messages = { path = "../entity_messages", version = "*" }
 
 nalgebra = { version = "0.31.4", features = ["serde-serialize"] }
 serde = { version = "^1.0", features = ["derive"] }
-bytemuck = "1"
 glium = "0.32.1"
 glfw = "0.45.0"
-imagine = "0.0.5"
+tobj = "3.2.4"
 zmq = "0.10.0"
 rand = "0.8.5"
 simple-error = "0.2.3"

@@ -1,10 +1,10 @@
 use core::time::Duration;
-use std::path::Path;
+use std::{path::Path, fs::File};
 
 use glium::{Program, Surface};
 use simple_error::SimpleError;
 
-use super::entity_shader::EntityShader;
+use super::entity_shader::{EntityShader, EntityGraphics};
 
 extern crate glium;
 
@@ -42,16 +42,22 @@ impl RenderEngine {
 
         let mut frame = self.display.draw();
 
-        frame.clear_all((1.0, 0.0, 1.0, 1.0), -1.0, 0);
+        // frame.clear_all((1.0, 0.0, 1.0, 1.0), -1.0, 0);
+        frame.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
 
         // enable GL_LINE_SMOOTH
 
         // update camera position
         // update light position
+        
+        let file = File::open("res/models/cube.obj").unwrap();
+        let entity = EntityGraphics::new(&self.display, file).unwrap();
+
 
         // draw with each shader
         let entity_shader_state = self.entity_shader.start(&mut frame, camera, sun_light, ambient_light);
-        entity_shader_state.draw(transformation, model, texture);
+
+        entity_shader_state.draw(transformation, entity, texture);
 
         // draw GUI
 
@@ -60,6 +66,7 @@ impl RenderEngine {
     }
 }
 
+// for dynamic loading of shaders
 pub fn shader_program_from_directory(
     display: &glium::Display,
     directory: &Path,

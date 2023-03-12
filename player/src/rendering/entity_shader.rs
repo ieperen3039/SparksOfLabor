@@ -1,8 +1,16 @@
-use glium::{Program, Surface};
+use std::{fs::File, io::BufReader};
+
+use glium::{index::PrimitiveType, Program, Surface};
 use nalgebra::{Matrix3, Matrix4, Point3, Similarity3, Vector2, Vector3};
 use simple_error::SimpleError;
+use tobj::LoadOptions;
 
 use super::camera::Camera;
+
+const SOL_OBJ_LOAD_OPTIONS: tobj::LoadOptions = tobj::LoadOptions {
+    single_index: true,
+    ..Default::default()
+};
 
 #[derive(Default)]
 struct Color {
@@ -13,14 +21,66 @@ struct Color {
 
 #[derive(Clone, Copy)]
 struct Vertex {
-    pos: Point3<f32>,
-    normal: Vector3<f32>,
-    tex: Vector2<f32>,
+    pos: [f32; 3],
+    normal: [f32; 3],
+    tex: [f32; 2],
 }
 
-struct EntityGraphics {
+glium::implement_vertex!(Vertex, pos, normal, tex);
+
+pub struct EntityGraphics {
     vertices: glium::VertexBuffer<Vertex>,
     indices: glium::IndexBuffer<u32>,
+}
+
+impl EntityGraphics {
+    pub fn new(
+        display: &glium::Display,
+        file: File,
+    ) -> Result<EntityGraphics, SimpleError> {
+        let mut reader = BufReader::new(file);
+        let (models, materials) = tobj::load_obj_buf(
+            &mut reader,
+            &SOL_OBJ_LOAD_OPTIONS,
+            |mat_path| Ok(Default::default()), // no materials
+        )
+        .map_err(|e| SimpleError::new(format!("Could not read OBJ file {:?}", file)))?;
+
+        let obj = models
+            .first()
+            .ok_or_else(|| SimpleError::new(format!("No models in OBJ file {:?}", file)))
+            .map(|m| m.mesh)?;
+
+        let vertices: Vec<Vertex> = Vec::new();
+        for vertex_index in 0..obj.indices.len() {
+            let position_index = vertex_index * 3;
+            let normal_index = vertex_index * 3;
+            let texture_index = vertex_index * 2;
+
+            assert!(obj.positions.len() >= position_index + 3);
+            assert!(obj.normals.len() >= normal_index + 3);
+            assert!(obj.texcoords.len() >= texture_index + 3);
+            
+            vertices.push(Vertex {
+                pos: obj.positions[position_index..position_index + 3]
+                    .try_into()
+                    .unwrap(),
+                normal: obj.normals[normal_index..normal_index + 3]
+                    .try_into()
+                    .unwrap(),
+                tex: obj.texcoords[texture_index..texture_index + 3]
+                    .try_into()
+                    .unwrap(),
+            });
+        }
+
+        let vertices = glium::VertexBuffer::new(display, &vertices)
+            .map_err(|e| SimpleError::new("Could not create vertex buffer"))?;
+        let indices = glium::IndexBuffer::new(display, PrimitiveType::TrianglesList, &obj.indices)
+            .map_err(|e| SimpleError::new("Could not create index buffer"))?;
+
+        return Ok(EntityGraphics { vertices, indices });
+    }
 }
 
 struct GraphicSettings {
@@ -85,7 +145,7 @@ impl EntityShader {
                 ambient: ambient_light,
                 directional: sun_light,
             },
-            draw_parameters : Default::default()
+            draw_parameters: Default::default(),
         }
     }
 }
@@ -96,7 +156,7 @@ pub struct EntityShaderDrawState<'a> {
     camera: Camera,
     view_projection_matrix: Matrix4<f32>,
     lights: LightData,
-    pub draw_parameters : glium::draw_parameters::DrawParameters<'a>
+    pub draw_parameters: glium::draw_parameters::DrawParameters<'a>,
 }
 
 impl EntityShaderDrawState<'_> {
