@@ -1,16 +1,20 @@
 use core::time::Duration;
-use std::{path::Path, fs::File};
+use std::{fs::File, path::Path};
 
 use glium::{Program, Surface};
 use simple_error::SimpleError;
 
-use super::entity_shader::{EntityShader, EntityGraphics};
+use super::{
+    camera::Camera,
+    entity_shader::{AmbientLight, Color, DirectionalLight, EntityGraphics, EntityShader},
+};
 
 extern crate glium;
 
 pub struct RenderEngine {
+    camera: Camera,
     display: glium::Display,
-    entity_shader : EntityShader,
+    entity_shader: EntityShader,
 }
 
 impl RenderEngine {
@@ -31,7 +35,14 @@ impl RenderEngine {
 
         let entity_shader = EntityShader::new(&display)?;
 
-        Ok(RenderEngine { display, entity_shader })
+        let (width, height) = display.get_framebuffer_dimensions();
+        let camera = Camera::new(width, height);
+
+        Ok(RenderEngine {
+            display,
+            entity_shader,
+            camera,
+        })
     }
 
     pub fn update_render_loop(
@@ -48,16 +59,39 @@ impl RenderEngine {
         // enable GL_LINE_SMOOTH
 
         // update camera position
-        // update light position
-        
-        let file = File::open("res/models/cube.obj").unwrap();
-        let entity = EntityGraphics::new(&self.display, file).unwrap();
+        let new_camera_state = self.camera.create_state();
 
+        // update light position
+        let sun_light = DirectionalLight {
+            color: Color {
+                red: 200,
+                green: 200,
+                blue: 200,
+            },
+            direction: [-4.0, -3.0, -2.0],
+            intensity: 1.0,
+        };
+        let ambient_light = AmbientLight {
+            color: Color {
+                red: 20,
+                green: 20,
+                blue: 20,
+            },
+        };
+
+        let object_file = File::open("res/models/cube.obj").unwrap();
+        let texture_file = File::open("res/textures/cube.png").unwrap();
+        let entity = EntityGraphics::new(&self.display, object_file, texture_file).unwrap();
 
         // draw with each shader
-        let entity_shader_state = self.entity_shader.start(&mut frame, camera, sun_light, ambient_light);
+        let mut entity_shader_state =
+            self.entity_shader
+                .start(&mut frame, new_camera_state, sun_light, ambient_light);
 
-        entity_shader_state.draw(transformation, entity, texture);
+        let transformation = nalgebra::Similarity3::identity();
+        entity_shader_state
+            .draw(transformation, entity)
+            .expect("Failed to render entity");
 
         // draw GUI
 
@@ -106,6 +140,5 @@ pub fn shader_program_from_directory(
         fragment_shader_str,
         geometry_shader_str,
     )
-    .map(|shader| Ok(shader))
-    .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err.to_string()))?
+    .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err.to_string()))
 }

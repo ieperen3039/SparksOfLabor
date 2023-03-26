@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug 'sol_client'",
+            "name": "Debug 'sol_player'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=sol_client",
-                    "--package=sol_client"
+                    "--bin=sol_player",
+                    "--package=sol_player"
                 ],
                 "filter": {
-                    "name": "sol_client",
+                    "name": "sol_player",
                     "kind": "bin"
                 }
             },
@@ -61,16 +61,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'sol_client'",
+            "name": "Debug unit tests in executable 'sol_player'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=sol_client",
-                    "--package=sol_client"
+                    "--bin=sol_player",
+                    "--package=sol_player"
                 ],
                 "filter": {
-                    "name": "sol_client",
+                    "name": "sol_player",
                     "kind": "bin"
                 }
             },

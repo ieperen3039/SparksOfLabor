@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-sol_login_server = { path = "../login_server", version = "*" }
+sol_login_messages = { path = "../login_messages", version = "*" }
 sol_address_server = { path = "../address_server", version = "*" }
 sol_player_data_messages = { path = "../player_data_messages", version = "*" }
 
