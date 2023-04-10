@@ -1,8 +1,9 @@
-use core::time::Duration;
-use std::{fs::File, path::Path};
+use std::{fs::File, path::Path, ops::Neg};
 
 use glium::{Program, Surface};
+use nalgebra::vector;
 use simple_error::SimpleError;
+use sol_voxel_lib::vector_alias::{Position, self, Direction};
 
 use super::{
     camera::Camera,
@@ -12,8 +13,9 @@ use super::{
 extern crate glium;
 
 pub struct RenderEngine {
-    camera: Camera,
     display: glium::Display,
+    event_loop: glium::glutin::event_loop::EventLoop<()>,
+    camera: Camera,
     entity_shader: EntityShader,
 }
 
@@ -22,81 +24,108 @@ impl RenderEngine {
         width: i32,
         height: i32,
     ) -> Result<RenderEngine, SimpleError> {
-        let events_loop = glium::glutin::event_loop::EventLoop::new();
+        let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
         let wb = glium::glutin::window::WindowBuilder::new()
             .with_inner_size(glium::glutin::dpi::LogicalSize::new(width, height))
-            .with_title("Sparks of Labor");
+            .with_title("Sparks of Labour");
         // 3. Parameters for building the OpenGL context.
         let cb = glium::glutin::ContextBuilder::new();
         // 4. Build the Display with the given window and OpenGL context parameters and register the
         //    window with the events_loop.
-        let display = glium::Display::new(wb, cb, &events_loop).unwrap();
+        let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
         let entity_shader = EntityShader::new(&display)?;
 
         let (width, height) = display.get_framebuffer_dimensions();
-        let camera = Camera::new(width, height);
+        let mut camera = Camera::new(width, height);
+        // camera.position = Position::new(4.0, 3.0, 2.0);
+        // camera.direction = Direction::new_normalize(VEC_ZERO - camera.position);
+
+        camera.position = Position::new(5.0, 0.0, 0.0);
+        camera.direction = vector_alias::UNIT_X.neg();
 
         Ok(RenderEngine {
             display,
+            event_loop,
             entity_shader,
             camera,
         })
     }
 
-    pub fn update_render_loop(
-        &self,
-        current_time: Duration,
-    ) {
-        // if close requested, stop
+    pub fn run_until_close(mut self) {
+        use glium::glutin;
+        use glutin::event;
 
-        let mut frame = self.display.draw();
-
-        // frame.clear_all((1.0, 0.0, 1.0, 1.0), -1.0, 0);
-        frame.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
-
-        // enable GL_LINE_SMOOTH
-
-        // update camera position
-        let new_camera_state = self.camera.create_state();
-
-        // update light position
-        let sun_light = DirectionalLight {
-            color: Color {
-                red: 200,
-                green: 200,
-                blue: 200,
-            },
-            direction: [-4.0, -3.0, -2.0],
-            intensity: 1.0,
-        };
-        let ambient_light = AmbientLight {
-            color: Color {
-                red: 20,
-                green: 20,
-                blue: 20,
-            },
-        };
-
-        let object_file = File::open("res/models/cube.obj").unwrap();
-        let texture_file = File::open("res/textures/cube.png").unwrap();
+        let object_file = File::open("player/res/cube/cube.obj").unwrap();
+        let texture_file = File::open("player/res/cube/cube.png").unwrap();
         let entity = EntityGraphics::new(&self.display, object_file, texture_file).unwrap();
+        let game_start_time = std::time::Instant::now();
 
-        // draw with each shader
-        let mut entity_shader_state =
-            self.entity_shader
-                .start(&mut frame, new_camera_state, sun_light, ambient_light);
+        self.event_loop.run(move | event, _target, control_flow | {
+            let current_time = std::time::Instant::now();
 
-        let transformation = nalgebra::Similarity3::identity();
-        entity_shader_state
-            .draw(transformation, entity)
-            .expect("Failed to render entity");
+            let mut frame = self.display.draw();
+            frame.clear_color_and_depth((1.0, 0.0, 1.0, 0.0), 1.0);
 
-        // draw GUI
+            // update camera position
+            let new_camera_state = self.camera.create_state();
 
-        // update window
-        frame.finish().expect("Failed to update frame");
+            // update light position
+            let sun_light = DirectionalLight {
+                color: Color {
+                    red: 200,
+                    green: 200,
+                    blue: 200,
+                },
+                direction: [-2.0, -1.0, -3.0],
+                intensity: 1.0,
+            };
+            let ambient_light = AmbientLight {
+                color: Color {
+                    red: 20,
+                    green: 20,
+                    blue: 20,
+                },
+            };
+
+            // draw with each shader
+            let mut entity_shader_state =
+                self.entity_shader
+                    .start(&mut frame, new_camera_state, sun_light, ambient_light);
+
+            let angle = (current_time - game_start_time).as_millis() as f32 / 1000.0;
+            let rotation = nalgebra::UnitQuaternion::from_axis_angle(&Direction::new_normalize(vector![0.0, 0.0, 1.0]), angle);
+            
+            // let transformation = nalgebra::Similarity3::identity();
+            let transformation = nalgebra::Similarity3::rotation_wrt_point(rotation, vector_alias::VEC_ZERO, 1.0);
+            entity_shader_state
+                .draw(transformation, &entity)
+                .expect("Failed to render entity");
+
+            // draw GUI
+
+            // update window
+            frame.finish().expect("Failed to update frame");
+
+            match event {
+                event::Event::WindowEvent { event, .. } => match event {
+                    event::WindowEvent::CloseRequested => {
+                        *control_flow = glutin::event_loop::ControlFlow::Exit;
+                        return;
+                    },
+                    event::WindowEvent::Resized(new_size) => {
+                        self.camera.set_view_port(new_size.width, new_size.height)
+                    }
+                    _ => return,
+                },
+                _ => {
+                    // let next_frame_time = current_time + std::time::Duration::from_millis(250);
+                    let next_frame_time = current_time + std::time::Duration::from_nanos(16_666_667);
+                    *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
+                },
+            }
+        });
     }
 }
 

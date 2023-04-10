@@ -20,7 +20,9 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            //"initCommands": ["settings set target.process.thread.step-avoid-libraries zmq"],
+            "postRunCommands": ["breakpoint list"]
         },
         {
             "type": "lldb",

@@ -28,12 +28,12 @@ pub struct Color {
 
 #[derive(Clone, Copy)]
 struct Vertex {
-    pos: [f32; 3],
-    normal: [f32; 3],
-    tex: [f32; 2],
+    in_vertex_position: [f32; 3],
+    in_vertex_normal: [f32; 3],
+    in_texture_coord: [f32; 2],
 }
 
-glium::implement_vertex!(Vertex, pos, normal, tex);
+glium::implement_vertex!(Vertex, in_vertex_position, in_vertex_normal, in_texture_coord);
 
 pub struct EntityGraphics {
     vertices: glium::VertexBuffer<Vertex>,
@@ -61,24 +61,26 @@ impl EntityGraphics {
             .ok_or_else(|| SimpleError::new(format!("No models in OBJ file {model_name}")))?
             .mesh;
 
+        let num_vertices = obj.positions.len() / 3;
+
         let mut vertices: Vec<Vertex> = Vec::new();
-        for vertex_index in 0..obj.indices.len() {
+        for vertex_index in 0..num_vertices {
             let position_index = vertex_index * 3;
             let normal_index = vertex_index * 3;
             let texture_index = vertex_index * 2;
 
             assert!(obj.positions.len() >= position_index + 3);
             assert!(obj.normals.len() >= normal_index + 3);
-            assert!(obj.texcoords.len() >= texture_index + 3);
+            assert!(obj.texcoords.len() >= texture_index + 2);
 
             vertices.push(Vertex {
-                pos: obj.positions[position_index..position_index + 3]
+                in_vertex_position: obj.positions[position_index..position_index + 3]
                     .try_into()
                     .unwrap(),
-                normal: obj.normals[normal_index..normal_index + 3]
+                in_vertex_normal: obj.normals[normal_index..normal_index + 3]
                     .try_into()
                     .unwrap(),
-                tex: obj.texcoords[texture_index..texture_index + 3]
+                in_texture_coord: obj.texcoords[texture_index..texture_index + 2]
                     .try_into()
                     .unwrap(),
             });
@@ -169,7 +171,10 @@ impl EntityShader {
                 ambient: ambient_light,
                 directional: sun_light,
             },
-            draw_parameters: Default::default(),
+            draw_parameters: glium::draw_parameters::DrawParameters {
+                backface_culling: glium::BackfaceCullingMode::CullClockwise,
+                ..Default::default()
+            },
         }
     }
 }
@@ -187,7 +192,7 @@ impl EntityShaderDrawState<'_> {
     pub fn draw(
         &mut self,
         transformation: nalgebra::Similarity3<f32>,
-        model: EntityGraphics,
+        model: &EntityGraphics,
     ) -> Result<(), glium::DrawError> {
         let transformation_matrix: nalgebra::Matrix4<f32> = transformation.to_homogeneous();
         let normal_matrix: nalgebra::Matrix3<f32> =
@@ -198,7 +203,7 @@ impl EntityShaderDrawState<'_> {
             model_matrix : *transformation_matrix.as_ref(),
             normal_matrix : *normal_matrix.as_ref(),
             camera_position : *self.camera_position.as_ref(),
-            texture_sampler : model.texture,
+            texture_sampler : &model.texture,
         };
 
         self.frame.draw(

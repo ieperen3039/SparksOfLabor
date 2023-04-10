@@ -1,0 +1,8 @@
+{
+    "lldb.launch.sourceLanguages":[
+        "rust"
+    ],
+    "rust-analyzer.linkedProjects": [
+        ".\\world_server\\Cargo.toml"
+    ],
+}

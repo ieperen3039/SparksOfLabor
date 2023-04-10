@@ -28,10 +28,10 @@ struct AmbientLight
     vec3 color;
 };
 
-const float SPECULAR_REFLECTANCE = 0.1f
+const float SPECULAR_REFLECTANCE = 0.1;
 
 const int MAX_POINT_LIGHTS = 2;
-const float LIGHT_CUTOFF = 0.001f
+const float LIGHT_CUTOFF = 0.001;
 
 const float ATT_LIN = 0.1;
 const float ATT_EXP = 0.0;
@@ -46,17 +46,17 @@ uniform vec3 camera_position;
 uniform sampler2D texture_sampler;
 
 // texture color cache
-vec3 material_color;
+vec4 material_color;
 
 // Blinn-Phong lighting
 // calculates the diffuse and specular color component caused by one light
 vec3 calcBlinnPhong(vec3 position, vec3 light_direction, vec3 normal, vec3 light_color, float light_intensity) {
     // Diffuse component
     float diffuse_power = max(dot(normal, light_direction), 0.0);
-    vec3 diffuse = material_color * light_color * diffuse_power;
+    vec3 diffuse = material_color.xyz * light_color * diffuse_power;
 
     // Specular component
-    vec3 view_dir = normalize(camera.position - position);
+    vec3 view_dir = normalize(camera_position - position);
     vec3 halfway_dir = normalize(light_direction + view_dir);
     float specular_power = pow(max(dot(normal, halfway_dir), 0.0), SPECULAR_REFLECTANCE);
     vec3 specular = specular_power * light_color;
@@ -83,7 +83,7 @@ vec3 calcPointLightComponents(PointLight light) {
 
     } else {
         float light_remainder = att * light.intensity;
-        vec3 light_dir_normalized = normalize(light.direction);
+        vec3 light_dir_normalized = normalize(light_direction);
         return calcBlinnPhong(light.color, view_vertex_position, light_dir_normalized, view_vertex_normal, light_remainder);
     }
 }
@@ -119,9 +119,14 @@ void main() {
     // accumulate (separately to emphasise parallelism)
     for (int i = 0; i < MAX_POINT_LIGHTS; i++)
     {
-        diffuse_specular_effect += point_light_effect[i]
+        diffuse_specular_effect += point_light_effect[i];
     }
 
-    vec4 real_color = material_color * vec4(lights.ambient, 1.0) + vec4(diffuse_specular_effect, 0.0);
-    fragment_color = vec4(sigm(col.x), sigm(col.y), sigm(col.z), col.w);
+    // camera lighting
+    float dot_value = dot(normalize(view_vertex_normal), normalize(camera_position - view_vertex_position));
+    diffuse_specular_effect += material_color.xyz * 0.1 * max(0, dot_value);
+
+    vec4 real_color = material_color * vec4(lights.ambient.color, 1.0) + vec4(diffuse_specular_effect, 0.0);
+
+    fragment_color = real_color;
 }

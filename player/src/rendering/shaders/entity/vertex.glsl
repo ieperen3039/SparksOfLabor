@@ -18,9 +18,9 @@ uniform mat3 normal_matrix;
 void main()
 {
     vec4 world_vertex_position = model_matrix * vec4(in_vertex_position, 1.0);
-    gl_Position = camera.view_projection_matrix * world_vertex_position;
+    gl_Position = view_projection_matrix * world_vertex_position;
 
     view_vertex_normal = normalize(normal_matrix * in_vertex_normal);
-    view_vertex_position = world_position.xyz;
+    view_vertex_position = world_vertex_position.xyz;
     view_texture_coord = in_texture_coord; //vec2(in_texture_coord.x, -in_texture_coord.y);
 }
