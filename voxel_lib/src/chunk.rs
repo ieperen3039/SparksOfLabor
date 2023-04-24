@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{vector_alias::Coordinate, voxel_index_error::VoxelIndexError, block_types::BlockType, voxel_properties::{VoxelTypeDefinitions, VoxelProperties}};
+use crate::{vector_alias::Coordinate, voxel_index_error::VoxelIndexError, voxel_properties::{VoxelTypeDefinitions, VoxelProperties}, block_types::Block};
 
 #[typetag::serde]
 pub trait AdvancedVoxel {
-    fn get_block_id(&self) -> BlockType;
+    fn get_base_block(&self) -> Block;
 }
 
 // #[derive(Serialize, Deserialize)]
@@ -14,14 +14,14 @@ pub trait AdvancedVoxel {
 
 // #[typetag::serde]
 // impl AdvancedVoxel for Container {
-//     fn get_block_id(&self) -> u32 {
-//         return 0;
+//     fn get_base_block(&self) -> Block {
+//         return Block::Container;
 //     }
 // }
 
 // could be a typedef
 #[derive(Serialize, Deserialize)]
-pub struct SimpleVoxel(BlockType);
+pub struct SimpleVoxel(Block);
 
 #[derive(Serialize, Deserialize)]
 pub enum Voxel {
@@ -71,6 +71,12 @@ enum Chunk16Grid {
 #[derive(Serialize, Deserialize)]
 pub struct Chunk16 {
     voxels: Chunk16Grid,
+    zero_coordinate: Coordinate,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Chunk64 {
+    voxels: Grid444<Chunk16>,
     zero_coordinate: Coordinate,
 }
 
@@ -129,7 +135,7 @@ impl Chunk16 {
     fn get_block_type_absolute(
         &self,
         coord: Coordinate,
-    ) -> Result<BlockType, VoxelIndexError> {
+    ) -> Result<Block, VoxelIndexError> {
         let internal4 = to_internal(coord, self.zero_coordinate, 4, 4)
             .ok_or(VoxelIndexError { value: coord })?;
 
@@ -149,7 +155,7 @@ impl Chunk16 {
                     &voxels.grid[internal4.x as usize][internal4.y as usize][internal4.z as usize];
                 let coord = to_internal_unchecked(coord, self.zero_coordinate + internal4 * 4, 1);
 
-                Ok(chunk4.get_block_type_relative(coord))
+                Ok(chunk4.get_block_relative(coord))
             },
         }
     }
@@ -176,10 +182,10 @@ impl Chunk4 {
         }
     }
 
-    fn get_block_type_relative(
+    fn get_block_relative(
         &self,
         coord: Coordinate,
-    ) -> BlockType {
+    ) -> Block {
         match &self.voxels {
             Chunk4Grid::Uniform(SimpleVoxel(voxel_type)) => *voxel_type,
             Chunk4Grid::Simple(voxels) => {
@@ -191,7 +197,7 @@ impl Chunk4 {
                 let voxel_impl = &voxels.grid[coord.x as usize][coord.y as usize][coord.z as usize];
                 match voxel_impl {
                     Voxel::Simple(SimpleVoxel(voxel_type)) => *voxel_type,
-                    Voxel::Advanced(advanced_voxel) => advanced_voxel.get_block_id(),
+                    Voxel::Advanced(advanced_voxel) => advanced_voxel.get_base_block(),
                 }
             },
         }
