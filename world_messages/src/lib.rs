@@ -1,6 +1,6 @@
 
 use serde::{Serialize, Deserialize};
-use sol_voxel_lib::{vector_alias::Coordinate, chunk::Chunk16};
+use sol_voxel_lib::{vector_alias::Coordinate, chunk::Chunk64};
 
 pub const VERSION_STRING: &str = env!("CARGO_PKG_VERSION");
 
@@ -15,5 +15,6 @@ pub const CONNECTION_NAME_WORLD_SERVER_REP : &str = "WorldServerReply";
 
 #[derive(Serialize, Deserialize)]
 pub enum WorldServerRep {
-    ContentChunk4(Coordinate, Chunk16)
+    Non,
+    ContentChunk64(Coordinate, Chunk64)
 }
