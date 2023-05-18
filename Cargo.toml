@@ -6,6 +6,7 @@ members = [
     "entity_server",
     "game_engine",
     "load_balancer",
+    "log_server",
     "login_messages",
     "login_server",
     "player",
