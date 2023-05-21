@@ -9,6 +9,7 @@ members = [
     "log_server",
     "login_messages",
     "login_server",
+    "network_lib",
     "player",
     "player_data_messages",
     "player_data_server",

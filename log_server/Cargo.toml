@@ -4,6 +4,8 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
+sol_address_server = { path = "../address_server", version = "*" }
+sol_network_lib = { path = "../network_lib", version = "*" }
 zmq = "0.10.0"
 serde = { version = "^1.0", features = ["derive"] }
 time = { version = "0.2", features = ["serde"] }

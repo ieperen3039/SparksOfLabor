@@ -1,4 +1,3 @@
-
 use serde::{Serialize, Deserialize};
 use sol_voxel_lib::{vector_alias::Coordinate, chunk::Chunk64};
 
@@ -8,13 +7,15 @@ pub const CONNECTION_NAME_WORLD_SERVER_REQ : &str = "WorldServerRequest";
 
 #[derive(Serialize, Deserialize)]
 pub enum WorldServerReq {
-    ContentChunk4(Coordinate)
+    ContentChunk4(Coordinate),
+    Ping(String),
 }
 
 pub const CONNECTION_NAME_WORLD_SERVER_REP : &str = "WorldServerReply";
 
 #[derive(Serialize, Deserialize)]
 pub enum WorldServerRep {
-    Non,
-    ContentChunk64(Coordinate, Chunk64)
+    Pong,
+    ContentChunk64Denied,
+    ContentChunk64(Coordinate, Box<Chunk64>),
 }

@@ -1,29 +1,40 @@
 #![allow(dead_code)]
 
-use rendering::render::RenderEngine;
+use sol_address_server::static_addresses;
+use sol_log_server::log::Logger;
+use sol_network_lib::network::{self, NetworkError};
+use sol_world_messages::{WorldServerReq, WorldServerRep};
 
 mod rendering;
 
 extern crate zmq;
 
 fn main() {
-    // println!("Player: online");
-    // let ctx = zmq::Context::new();
+    let context = zmq::Context::new();
+    let logger = Logger::new("Player", context.clone(), String::from(static_addresses::LOG_SERVER))
+        .expect("Could not connect logger");
 
-    // let socket = ctx.socket(zmq::REQ).unwrap();
-    // socket.connect("tcp://127.0.0.1:60265").unwrap();
+    let socket = context.socket(zmq::REQ).unwrap();
+    socket.connect(static_addresses::WORLD_SERVER).unwrap();
 
-    // for i in 0..3 {
-    //     let request = std::format!("Sending {i}th message");
-    //     socket.send(request.as_str(), 0).unwrap();
+    logger.send_status("Player online");
 
-    //     let msg_string = socket.recv_string(0).unwrap().unwrap();
-    //     println!("Received {msg_string}");
-    // }
+    for i in 0..3 {
+        let request = WorldServerReq::Ping(std::format!("Sending {i}th message"));
+        let result : Result<WorldServerRep, NetworkError> = network::query(&socket, request);
 
-    // println!("Player: offline");
-    let render_engine = RenderEngine::new(800, 800)
-        .expect("Could not create render engine");
+        match result {
+            Ok(WorldServerRep::Pong) => logger.send_debug("received pong"),
+            Ok(_) => logger.send_debug("received not-pong"),
+            Err(err) => println!("received error {:?}", err),
+        }
+
+        std::thread::sleep(core::time::Duration::from_millis(200));
+    }
+
+    logger.send_status("Player offline");
+    // let render_engine = RenderEngine::new(800, 800)
+    //     .expect("Could not create render engine");
     
-    render_engine.run_until_close();
+    // render_engine.run_until_close();
 }

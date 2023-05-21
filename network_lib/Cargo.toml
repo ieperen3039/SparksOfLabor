@@ -1,9 +1,10 @@
 [package]
-name = "sol_world_messages"
+name = "sol_network_lib"
 version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-sol_voxel_lib = { path = "../voxel_lib", version = "*" }
 serde = { version = "^1.0", features = ["derive"] }
 typetag = "0.2"
+bincode = "1.3.3"
+zmq = "0.10.0"
