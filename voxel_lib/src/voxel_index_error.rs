@@ -1,9 +1,9 @@
-use simple_error::SimpleError;
 use crate::vector_alias::*;
+use simple_error::SimpleError;
 
 #[derive(Debug)]
 pub struct VoxelIndexError {
-    pub value : Coordinate
+    pub value: Coordinate,
 }
 
 impl std::error::Error for VoxelIndexError {}
@@ -17,7 +17,6 @@ impl std::fmt::Display for VoxelIndexError {
         )
     }
 }
-
 
 impl From<VoxelIndexError> for SimpleError {
     fn from(err: VoxelIndexError) -> Self {

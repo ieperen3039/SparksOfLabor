@@ -1,19 +1,21 @@
 use sol_address_server::static_addresses;
 use sol_log_server::log::{Logger, Severity};
-use sol_network_lib::network::{ReplyLoop, NetworkError};
+use sol_network_lib::network::{NetworkError, ReplyLoop};
 use sol_world_messages::{WorldServerRep, WorldServerReq};
 
-use crate::{
-    world::World,
-};
+use crate::world::World;
 mod world;
 
 extern crate zmq;
 
 fn main() {
     let context = zmq::Context::new();
-    let logger = Logger::new("World Server", context.clone(), String::from(static_addresses::LOG_SERVER))
-        .expect("Could not connect logger");
+    let logger = Logger::new(
+        "World Server",
+        context.clone(),
+        String::from(static_addresses::LOG_SERVER),
+    )
+    .expect("Could not connect logger");
 
     let reply_loop = {
         let reply_loop_result = ReplyLoop::new(
@@ -30,7 +32,7 @@ fn main() {
                     &format!("Could not create reply loop: {error}"),
                 );
                 return;
-            }
+            },
         }
     };
 

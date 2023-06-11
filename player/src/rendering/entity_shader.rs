@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::BufReader,
-};
+use std::{fs::File, io::BufReader};
 
 use glium::{index::PrimitiveType, texture::srgb_texture2d::SrgbTexture2d, Surface};
 use simple_error::SimpleError;
@@ -33,7 +30,12 @@ struct Vertex {
     in_texture_coord: [f32; 2],
 }
 
-glium::implement_vertex!(Vertex, in_vertex_position, in_vertex_normal, in_texture_coord);
+glium::implement_vertex!(
+    Vertex,
+    in_vertex_position,
+    in_vertex_normal,
+    in_texture_coord
+);
 
 pub struct EntityGraphics {
     vertices: glium::VertexBuffer<Vertex>,
@@ -94,12 +96,14 @@ impl EntityGraphics {
         let image = image::load(BufReader::new(texture_file), image::ImageFormat::Png)
             .map_err(|e| SimpleError::new(format!("Could not load texture from file: {e}")))?
             .to_rgba8();
-        
-        let image_dimensions = image.dimensions();
-        let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 
-        let texture = glium::texture::SrgbTexture2d::new(display, image)
-            .map_err(|e| SimpleError::new(format!("Could not create texture from image file: {e}")))?;
+        let image_dimensions = image.dimensions();
+        let image =
+            glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+
+        let texture = glium::texture::SrgbTexture2d::new(display, image).map_err(|e| {
+            SimpleError::new(format!("Could not create texture from image file: {e}"))
+        })?;
 
         return Ok(EntityGraphics {
             vertices,

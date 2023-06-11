@@ -126,16 +126,13 @@ fn to_internal_unchecked(
 }
 
 impl<T> Grid444<T> {
-    fn get<'s>( &'s self, coord: Coordinate, ) -> &'s T {
+    fn get<'s>(&'s self, coord: Coordinate) -> &'s T {
         &self.grid[coord.x as usize][coord.y as usize][coord.z as usize]
     }
 }
 
 impl Chunk64 {
-    fn get_chunk16<'s>(
-        &'s self,
-        coord: Coordinate,
-    ) -> Result<&'s Chunk16, VoxelIndexError> {
+    fn get_chunk16<'s>(&'s self, coord: Coordinate) -> Result<&'s Chunk16, VoxelIndexError> {
         let internal_coord = to_internal(coord, self.zero_coordinate, 16, 4)
             .ok_or(VoxelIndexError { value: coord })?;
 
@@ -156,10 +153,7 @@ impl Chunk16 {
             .ok_or(VoxelIndexError { value: coord })
     }
 
-    fn get_block_type_absolute(
-        &self,
-        coord: Coordinate,
-    ) -> Result<Block, VoxelIndexError> {
+    fn get_block_type_absolute(&self, coord: Coordinate) -> Result<Block, VoxelIndexError> {
         let internal4 = to_internal_unchecked(coord, self.zero_coordinate, 4);
 
         match &self.voxels {
@@ -182,10 +176,7 @@ impl Chunk16 {
 }
 
 impl Chunk4 {
-    fn get_voxel(
-        &self,
-        coord: Coordinate,
-    ) -> VoxelRef {
+    fn get_voxel(&self, coord: Coordinate) -> VoxelRef {
         match &self.voxels {
             Chunk4Grid::Uniform(voxel) => VoxelRef::Simple(voxel),
             Chunk4Grid::Simple(voxels) => {
@@ -202,10 +193,7 @@ impl Chunk4 {
         }
     }
 
-    fn get_block_relative(
-        &self,
-        coord: Coordinate,
-    ) -> Block {
+    fn get_block_relative(&self, coord: Coordinate) -> Block {
         match &self.voxels {
             Chunk4Grid::Uniform(SimpleVoxel(voxel_type)) => *voxel_type,
             Chunk4Grid::Simple(voxels) => {

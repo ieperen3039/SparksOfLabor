@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use crate::block_types::{Block, BlockType};
-
+use std::collections::HashMap;
 
 pub struct VoxelProperties {}
 

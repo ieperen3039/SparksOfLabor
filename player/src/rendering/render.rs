@@ -1,9 +1,9 @@
-use std::{fs::File, path::Path, ops::Neg};
+use std::{fs::File, ops::Neg, path::Path};
 
 use glium::{Program, Surface};
 use nalgebra::vector;
 use simple_error::SimpleError;
-use sol_voxel_lib::vector_alias::{Position, self, Direction};
+use sol_voxel_lib::vector_alias::{self, Direction, Position};
 
 use super::{
     camera::Camera,
@@ -20,10 +20,7 @@ pub struct RenderEngine {
 }
 
 impl RenderEngine {
-    pub fn new(
-        width: i32,
-        height: i32,
-    ) -> Result<RenderEngine, SimpleError> {
+    pub fn new(width: i32, height: i32) -> Result<RenderEngine, SimpleError> {
         let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
         let wb = glium::glutin::window::WindowBuilder::new()
@@ -62,7 +59,7 @@ impl RenderEngine {
         let entity = EntityGraphics::new(&self.display, object_file, texture_file).unwrap();
         let game_start_time = std::time::Instant::now();
 
-        self.event_loop.run(move | event, _target, control_flow | {
+        self.event_loop.run(move |event, _target, control_flow| {
             let current_time = std::time::Instant::now();
 
             let mut frame = self.display.draw();
@@ -95,10 +92,14 @@ impl RenderEngine {
                     .start(&mut frame, new_camera_state, sun_light, ambient_light);
 
             let angle = (current_time - game_start_time).as_millis() as f32 / 1000.0;
-            let rotation = nalgebra::UnitQuaternion::from_axis_angle(&Direction::new_normalize(vector![0.0, 0.0, 1.0]), angle);
-            
+            let rotation = nalgebra::UnitQuaternion::from_axis_angle(
+                &Direction::new_normalize(vector![0.0, 0.0, 1.0]),
+                angle,
+            );
+
             // let transformation = nalgebra::Similarity3::identity();
-            let transformation = nalgebra::Similarity3::rotation_wrt_point(rotation, vector_alias::VEC_ZERO, 1.0);
+            let transformation =
+                nalgebra::Similarity3::rotation_wrt_point(rotation, vector_alias::VEC_ZERO, 1.0);
             entity_shader_state
                 .draw(transformation, &entity)
                 .expect("Failed to render entity");
@@ -116,12 +117,13 @@ impl RenderEngine {
                     },
                     event::WindowEvent::Resized(new_size) => {
                         self.camera.set_view_port(new_size.width, new_size.height)
-                    }
+                    },
                     _ => return,
                 },
                 _ => {
                     // let next_frame_time = current_time + std::time::Duration::from_millis(250);
-                    let next_frame_time = current_time + std::time::Duration::from_nanos(16_666_667);
+                    let next_frame_time =
+                        current_time + std::time::Duration::from_nanos(16_666_667);
                     *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
                 },
             }

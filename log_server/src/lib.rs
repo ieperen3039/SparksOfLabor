@@ -50,25 +50,15 @@ pub mod log {
             })
         }
 
-        pub fn send_status(
-            &self,
-            text: &str,
-        ) {
+        pub fn send_status(&self, text: &str) {
             self.log(Severity::Status, text)
         }
 
-        pub fn send_debug(
-            &self,
-            text: &str,
-        ) {
+        pub fn send_debug(&self, text: &str) {
             self.log(Severity::Activity, text)
         }
 
-        pub fn log(
-            &self,
-            severity: Severity,
-            text: &str,
-        ) {
+        pub fn log(&self, severity: Severity, text: &str) {
             let timestamp = OffsetDateTime::now_utc().unix_timestamp_nanos();
 
             println!("{:<20?}: {}", severity, text);
@@ -82,11 +72,11 @@ pub mod log {
                 },
             );
 
-            let send_result =
-                bincode::serialize(&log_message).map(|encoded| {
-                    let topic_bytes = b"Log";
-                    self.socket.send_multipart([topic_bytes.to_vec(), encoded], 0x00)
-                });
+            let send_result = bincode::serialize(&log_message).map(|encoded| {
+                let topic_bytes = b"Log";
+                self.socket
+                    .send_multipart([topic_bytes.to_vec(), encoded], 0x00)
+            });
 
             match send_result {
                 Err(error) => println!(

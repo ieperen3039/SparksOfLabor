@@ -63,10 +63,7 @@ fn create_listen_socket(context: zmq::Context) -> Result<zmq::Socket, zmq::Error
     Ok(socket)
 }
 
-fn listen(
-    socket: &zmq::Socket,
-    receive_flags: i32,
-) -> Result<(), NetworkError> {
+fn listen(socket: &zmq::Socket, receive_flags: i32) -> Result<(), NetworkError> {
     let received_messages = socket
         .recv_multipart(receive_flags)
         .map_err(|err| NetworkError::ZmqError(err))?;
@@ -88,10 +85,7 @@ fn handle_message(message: Message) {
     }
 }
 
-fn handle_log_text(
-    sender: Sender,
-    text: LogText,
-) {
+fn handle_log_text(sender: Sender, text: LogText) {
     println!(
         "{:>20} - {:<30}: [{:<20?}] {}",
         text.timestamp, sender, text.severity, text.text

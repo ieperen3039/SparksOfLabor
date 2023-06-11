@@ -3,7 +3,7 @@
 use sol_address_server::static_addresses;
 use sol_log_server::log::Logger;
 use sol_network_lib::network::{self, NetworkError};
-use sol_world_messages::{WorldServerReq, WorldServerRep};
+use sol_world_messages::{WorldServerRep, WorldServerReq};
 
 mod rendering;
 
@@ -11,8 +11,12 @@ extern crate zmq;
 
 fn main() {
     let context = zmq::Context::new();
-    let logger = Logger::new("Player", context.clone(), String::from(static_addresses::LOG_SERVER))
-        .expect("Could not connect logger");
+    let logger = Logger::new(
+        "Player",
+        context.clone(),
+        String::from(static_addresses::LOG_SERVER),
+    )
+    .expect("Could not connect logger");
 
     let socket = context.socket(zmq::REQ).unwrap();
     socket.connect(static_addresses::WORLD_SERVER).unwrap();
@@ -21,7 +25,7 @@ fn main() {
 
     for i in 0..3 {
         let request = WorldServerReq::Ping(std::format!("Sending {i}th message"));
-        let result : Result<WorldServerRep, NetworkError> = network::query(&socket, request);
+        let result: Result<WorldServerRep, NetworkError> = network::query(&socket, request);
 
         match result {
             Ok(WorldServerRep::Pong) => logger.send_debug("received pong"),
@@ -35,6 +39,6 @@ fn main() {
     logger.send_status("Player offline");
     // let render_engine = RenderEngine::new(800, 800)
     //     .expect("Could not create render engine");
-    
+
     // render_engine.run_until_close();
 }

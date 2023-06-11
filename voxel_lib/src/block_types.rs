@@ -14,7 +14,7 @@ const NUM_BITS_VARIANT: u32 = 8; // 128 variants per block type
 const BITS_ORIENTATION_START: u32 = BITS_VARIANT_START + NUM_BITS_VARIANT;
 const NUM_BITS_ORIENTATION: u32 = BlockOrientation::NUM_BITS_X + BlockOrientation::NUM_BITS_Z; // 6: see get_orientation
 
-const TOTAL_NUM_BITS : u32 = NUM_BITS_BLOCK_TYPE + NUM_BITS_VARIANT + NUM_BITS_ORIENTATION;
+const TOTAL_NUM_BITS: u32 = NUM_BITS_BLOCK_TYPE + NUM_BITS_VARIANT + NUM_BITS_ORIENTATION;
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct Block {
@@ -35,9 +35,10 @@ impl Block {
     }
 
     pub fn get_orientation(&self) -> BlockOrientation {
-
-        let x_axis_value = self.get_bits(BlockOrientation::BITS_X_START, BlockOrientation::NUM_BITS_X);
-        let z_raw_offset = self.get_bits(BlockOrientation::BITS_Z_START, BlockOrientation::NUM_BITS_Z);
+        let x_axis_value =
+            self.get_bits(BlockOrientation::BITS_X_START, BlockOrientation::NUM_BITS_X);
+        let z_raw_offset =
+            self.get_bits(BlockOrientation::BITS_Z_START, BlockOrientation::NUM_BITS_Z);
 
         // if z_corrected_offset == 3, then z would map to the opposite of x (which is impossible)
         // if z_corrected_offset == 0 (or 6), then z would be equal to x (which is also impossible)
@@ -46,7 +47,7 @@ impl Block {
             1 => 2,
             2 => 4,
             3 => 5,
-            _ => panic!()
+            _ => panic!(),
         };
         let z_axis_value = (x_axis_value + z_corrected_offset) % 6;
 
@@ -56,26 +57,17 @@ impl Block {
         }
     }
 
-    pub fn set_type(
-        &mut self,
-        new_type: BlockType,
-    ) {
+    pub fn set_type(&mut self, new_type: BlockType) {
         self.set_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE, new_type as u32);
     }
 
-    pub fn set_variant(
-        &mut self,
-        new_value: u32,
-    ) {
+    pub fn set_variant(&mut self, new_value: u32) {
         self.set_bits(BITS_VARIANT_START, NUM_BITS_VARIANT, new_value);
     }
-    pub fn set_orientation(
-        &mut self,
-        new_value: BlockOrientation,
-    ) {
+    pub fn set_orientation(&mut self, new_value: BlockOrientation) {
         let x_axis_value = BlockOrientation::axis_to_u32(new_value.x_dir);
         let z_axis_value = BlockOrientation::axis_to_u32(new_value.z_dir);
-        
+
         // let z_axis_value = (x_axis_value + z_corrected_offset) % 6;
         let z_value_corrected = (z_axis_value - x_axis_value + 6) % 6;
         // if z_corrected_offset == 3, then z would map to the opposite of x (which is impossible)
@@ -87,18 +79,22 @@ impl Block {
             2 => 1,
             4 => 2,
             5 => 3,
-            _ => panic!()
+            _ => panic!(),
         };
-        self.set_bits(BlockOrientation::BITS_X_START, BlockOrientation::NUM_BITS_X, x_axis_value);
-        self.set_bits(BlockOrientation::BITS_Z_START, BlockOrientation::NUM_BITS_Z, z_value_raw);
+        self.set_bits(
+            BlockOrientation::BITS_X_START,
+            BlockOrientation::NUM_BITS_X,
+            x_axis_value,
+        );
+        self.set_bits(
+            BlockOrientation::BITS_Z_START,
+            BlockOrientation::NUM_BITS_Z,
+            z_value_raw,
+        );
     }
 
     #[inline(always)]
-    fn get_bits(
-        &self,
-        first_bit: u32,
-        num_bits: u32,
-    ) -> u32 {
+    fn get_bits(&self, first_bit: u32, num_bits: u32) -> u32 {
         debug_assert!((first_bit + num_bits) < 32, "bit range out of bounds");
         // 0b0000_0001 << 6 = 0b0000_0001
         // 0b0100_0000 - 1 = 0b0011_1111 (a mask for 6 bits)
@@ -107,12 +103,7 @@ impl Block {
     }
 
     #[inline(always)]
-    fn set_bits(
-        &mut self,
-        first_bit: u32,
-        num_bits: u32,
-        value: u32,
-    ) {
+    fn set_bits(&mut self, first_bit: u32, num_bits: u32, value: u32) {
         debug_assert!((first_bit + num_bits) < 32, "bit range out of bounds");
         debug_assert!(value < (1 << num_bits), "value too large for set_bits");
 

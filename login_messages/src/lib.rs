@@ -1,12 +1,15 @@
 pub mod messages {
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
-    pub const VERSION_STRING : &str = "0.1"; // this could obviously be better
+    pub const VERSION_STRING: &str = "0.1"; // this could obviously be better
 
     #[derive(Serialize, Deserialize)]
     pub enum General {
-        Ping, 
+        Ping,
         Pong,
-        ProtocolConnect { version : String, connection_name : String},
+        ProtocolConnect {
+            version: String,
+            connection_name: String,
+        },
     }
 }
