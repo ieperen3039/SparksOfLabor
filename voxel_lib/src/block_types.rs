@@ -96,7 +96,7 @@ impl Block {
     #[inline(always)]
     fn get_bits(&self, first_bit: u32, num_bits: u32) -> u32 {
         debug_assert!((first_bit + num_bits) < 32, "bit range out of bounds");
-        // 0b0000_0001 << 6 = 0b0000_0001
+        // 0b0000_0001 << 6 = 0b0100_0000
         // 0b0100_0000 - 1 = 0b0011_1111 (a mask for 6 bits)
         let mask = (1 << num_bits) - 1;
         (self.byte >> first_bit) & mask
@@ -107,9 +107,9 @@ impl Block {
         debug_assert!((first_bit + num_bits) < 32, "bit range out of bounds");
         debug_assert!(value < (1 << num_bits), "value too large for set_bits");
 
-        // 0b0000_0001 << 6 = 0b0000_0001
+        // 0b0000_0001 << 6 = 0b0100_0000
         // 0b0100_0000 - 1 = 0b0011_1111 (a mask for 6 bits)
-        // 0b0011_1111 << 1 = 0b0111_1110 (a mask for bit 1..=6 bits)
+        // 0b0011_1111 << 1 = 0b0111_1110 (a mask for bit 1..=6)
         let mask = ((1 << num_bits) - 1) << first_bit;
         // set the bits of the mask to zero, then OR with the shifted value
         self.byte &= !mask;

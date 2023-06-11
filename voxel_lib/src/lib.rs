@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod block_types;
 pub mod chunk;
 pub mod vector_alias;

@@ -48,13 +48,16 @@ struct Grid444<T> {
     grid: [[[T; 4]; 4]; 4],
 }
 
+// chunk of 264 bytes
 #[derive(Serialize, Deserialize)]
 enum Chunk4Grid {
     // a chunk containing just one type of block (air, slate)
     Uniform(SimpleVoxel),
     // a chunk containing only simple voxels
+    // 256 bytes
     Simple(Grid444<SimpleVoxel>),
     // any other chunk containing any combination of voxel types
+    // box of 1024 bytes
     Detailed(Box<Grid444<Voxel>>),
 }
 
@@ -68,9 +71,11 @@ enum Chunk16Grid {
     // a chunk16 containing just one type of block (air, slate)
     Uniform(SimpleVoxel),
     // a chunk16 consisting only out of simple chunks
-    Simple(Grid444<Grid444<SimpleVoxel>>),
+    // box of 16_384 bytes / 16 KB
+    Simple(Box<Grid444<Grid444<SimpleVoxel>>>),
     // any combination of chunks
-    Detailed(Grid444<Chunk4>),
+    // box of 16_896 bytes / 16.5 KB
+    Detailed(Box<Grid444<Chunk4>>),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,6 +86,7 @@ pub struct Chunk16 {
 
 #[derive(Serialize, Deserialize)]
 pub struct Chunk64 {
+    // 2.048 bytes / 2 KB
     voxels: Grid444<Chunk16>,
     zero_coordinate: Coordinate,
 }

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use sol_address_server::static_addresses;
 use sol_log_server::log::{Logger, Severity};
 use sol_network_lib::network::{NetworkError, ReplyLoop};
