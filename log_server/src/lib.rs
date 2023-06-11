@@ -83,7 +83,10 @@ pub mod log {
             );
 
             let send_result =
-                bincode::serialize(&log_message).map(|encoded| self.socket.send(encoded, 0x00));
+                bincode::serialize(&log_message).map(|encoded| {
+                    let topic_bytes = b"Log";
+                    self.socket.send_multipart([topic_bytes.to_vec(), encoded], 0x00)
+                });
 
             match send_result {
                 Err(error) => println!(

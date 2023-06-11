@@ -1,5 +1,4 @@
 combine_control_expr = false
-fn_args_layout = "Vertical"
 fn_single_line = true
 format_strings = true
 hex_literal_case = "Upper"

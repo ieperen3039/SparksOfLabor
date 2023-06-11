@@ -1,6 +1,6 @@
 use sol_address_server::static_addresses;
 use sol_log_server::log::*;
-use sol_network_lib::network::{self, NetworkError};
+use sol_network_lib::network::NetworkError;
 use time::OffsetDateTime;
 
 const LOG_SERVER_NAME: &str = "Log server";
@@ -8,10 +8,16 @@ const LOG_SERVER_NAME: &str = "Log server";
 fn main() {
     let context = zmq::Context::new();
 
-    let socket = context.socket(zmq::SUB).expect("Could not create socket");
-    socket
-        .bind(static_addresses::LOG_SERVER)
-        .expect("Could not bind socket");
+    let socket = {
+        let socket_result = create_listen_socket(context);
+        match socket_result {
+            Err(err) => {
+                println!("Could not create socket: {:?}", err);
+                return;
+            },
+            Ok(socket) => socket,
+        }
+    };
 
     handle_log_text(
         String::from(LOG_SERVER_NAME),
@@ -48,12 +54,29 @@ fn main() {
     }
 }
 
+fn create_listen_socket(context: zmq::Context) -> Result<zmq::Socket, zmq::Error> {
+    let socket = context.socket(zmq::SUB)?;
+    // subscribe to everything
+    socket.set_subscribe(b"")?;
+    socket.bind(static_addresses::LOG_SERVER)?;
+
+    Ok(socket)
+}
+
 fn listen(
     socket: &zmq::Socket,
     receive_flags: i32,
 ) -> Result<(), NetworkError> {
-    let message = network::await_receive(socket, receive_flags)?;
-    println!("Received something!");
+    let received_messages = socket
+        .recv_multipart(receive_flags)
+        .map_err(|err| NetworkError::ZmqError(err))?;
+
+    let _topic = &received_messages[0];
+    let encoded = &received_messages[1];
+
+    let message =
+        bincode::deserialize(&encoded[..]).map_err(|err| NetworkError::SerialisationError(err))?;
+
     handle_message(message);
 
     Ok(())
@@ -70,7 +93,7 @@ fn handle_log_text(
     text: LogText,
 ) {
     println!(
-        "{} - {:<30}: [{:<20?}] {}",
-        sender, text.timestamp, text.severity, text.text
+        "{:>20} - {:<30}: [{:<20?}] {}",
+        text.timestamp, sender, text.severity, text.text
     )
 }
