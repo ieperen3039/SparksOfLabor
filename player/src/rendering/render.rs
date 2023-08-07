@@ -5,9 +5,11 @@ use nalgebra::vector;
 use simple_error::SimpleError;
 use sol_voxel_lib::vector_alias::{self, Direction, Position};
 
+use crate::rendering::mesh::Mesh;
+
 use super::{
     camera::Camera,
-    entity_shader::{AmbientLight, Color, DirectionalLight, EntityGraphics, EntityShader},
+    entity_shader::{AmbientLight, Color, DirectionalLight, EntityShader},
 };
 
 extern crate glium;
@@ -56,7 +58,7 @@ impl RenderEngine {
 
         let object_file = File::open("player/res/cube/cube.obj").unwrap();
         let texture_file = File::open("player/res/cube/cube.png").unwrap();
-        let entity = EntityGraphics::new(&self.display, object_file, texture_file).unwrap();
+        let entity = Mesh::from_file(&self.display, object_file, texture_file).unwrap();
         let game_start_time = std::time::Instant::now();
 
         self.event_loop.run(move |event, _target, control_flow| {
