@@ -1,1 +1,288 @@
-<mxfile host="Electron" modified="2023-04-10T12:52:46.933Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/20.8.10 Chrome/106.0.5249.199 Electron/21.3.5 Safari/537.36" etag="CY1WYW-hSLD_wSDxktKe" version="20.8.10" type="device"><diagram name="Page-1" id="SjT1U9J1PQw6P1Kr80av">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</diagram></mxfile>
+<mxfile host="Electron" modified="2023-06-11T12:44:44.464Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.8 Chrome/112.0.5615.165 Electron/24.2.0 Safari/537.36" etag="pIj4QcFzTPZS8jehPzN9" version="21.2.8" type="device">
+  <diagram name="Page-1" id="SjT1U9J1PQw6P1Kr80av">
+    <mxGraphModel dx="2245" dy="828" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-44" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-34" target="Afy7KDOPr_7XvBL8b5q0-41" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="280" />
+              <mxPoint x="460" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-9" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-2" target="Afy7KDOPr_7XvBL8b5q0-8" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-2" value="Send a message from one rust binary to another rust binary using ZeroMQ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="80" y="160" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-6" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-3" target="Afy7KDOPr_7XvBL8b5q0-4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-3" value="Render a black cube against a magenta background" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="680" y="160" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-7" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-4" target="Afy7KDOPr_7XvBL8b5q0-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-87" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-4" target="Afy7KDOPr_7XvBL8b5q0-86" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-4" value="Controllable camera, pivoting around a (blinn-phong shaded) cube, with world light" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="280" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-39" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-5" target="Afy7KDOPr_7XvBL8b5q0-38" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-5" value="Render (only) the surface of a chunk" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="400" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-12" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-8" target="Afy7KDOPr_7XvBL8b5q0-11" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-8" value="Generate changes in the world model in the player, send these changes through a load balancer to two world servers" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="280" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-10" value="Starting from the player, progress every stage of the log-in flow, notifying every server" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="-320" y="760" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-19" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-11" target="Afy7KDOPr_7XvBL8b5q0-17" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-24" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-69" target="Afy7KDOPr_7XvBL8b5q0-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-11" value="Request several chunks from a world server through a load balancer" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="400" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-14" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-13" target="Afy7KDOPr_7XvBL8b5q0-8" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-28" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-13" target="Afy7KDOPr_7XvBL8b5q0-27" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-75" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-13" target="Afy7KDOPr_7XvBL8b5q0-48" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="280" />
+              <mxPoint x="260" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-13" value="Implement a space-efficient and serialisable voxel engine" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="280" y="160" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-21" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-17" target="Afy7KDOPr_7XvBL8b5q0-20" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-42" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-17" target="Afy7KDOPr_7XvBL8b5q0-41" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="620" />
+              <mxPoint x="440" y="620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-47" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-17" target="Afy7KDOPr_7XvBL8b5q0-45" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="540" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="260" y="640" />
+              <mxPoint x="260" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-70" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-17" target="Afy7KDOPr_7XvBL8b5q0-69" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-80" y="730" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-17" value="Log-in a player, and connect with a previously connected player" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="520" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-64" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-20" target="Afy7KDOPr_7XvBL8b5q0-63" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="760" />
+              <mxPoint x="260" y="960" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-20" value="Log-in a player and download all world chunks from different players, without accessing a world server" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-23" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-22" target="Afy7KDOPr_7XvBL8b5q0-25" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-22" value="Connect to the address server using a web address" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="-320" y="520" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-26" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-25" target="Afy7KDOPr_7XvBL8b5q0-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-25" value="&quot;authentication&quot;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="-320" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-30" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-27" target="Afy7KDOPr_7XvBL8b5q0-5" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="480" y="380" />
+              <mxPoint x="640" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-37" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-27" target="Afy7KDOPr_7XvBL8b5q0-33" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-62" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-27" target="Afy7KDOPr_7XvBL8b5q0-57" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-27" value="Auto-generate a simple terrain" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="280" y="280" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-53" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-29" target="Afy7KDOPr_7XvBL8b5q0-52" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-79" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-52" target="Afy7KDOPr_7XvBL8b5q0-77" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-29" value="Walk around with a simple, untextured player model" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-36" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-33" target="Afy7KDOPr_7XvBL8b5q0-29" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="660" y="520" />
+              <mxPoint x="660" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-33" value="Port AABB collision, drop a cube entity on the terrain" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="480" y="400" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-35" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-34" target="Afy7KDOPr_7XvBL8b5q0-33" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-34" value="Implement entities.&lt;br&gt;Simulate the position of an entity in free-fall" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="480" y="160" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-40" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-38" target="Afy7KDOPr_7XvBL8b5q0-29" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-84" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-38" target="Afy7KDOPr_7XvBL8b5q0-82" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-85" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-38" target="Afy7KDOPr_7XvBL8b5q0-83" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="620" />
+              <mxPoint x="1040" y="620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-38" value="Render a distance-limited surface of the world" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="520" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-60" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-41" target="Afy7KDOPr_7XvBL8b5q0-59" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-41" value="Create an entity update in one player, receive and apply this update in another player" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="480" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-56" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-45" target="Afy7KDOPr_7XvBL8b5q0-54" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-45" value="Create a voxel update in one player, receive and apply this update in another player" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="280" y="760" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-49" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-48" target="Afy7KDOPr_7XvBL8b5q0-45" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-73" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-48" target="Afy7KDOPr_7XvBL8b5q0-72" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-48" value="Place a voxel that updates itself after some time" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="280" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-55" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-52" target="Afy7KDOPr_7XvBL8b5q0-54" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="860" />
+              <mxPoint x="480" y="860" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-78" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-52" target="Afy7KDOPr_7XvBL8b5q0-76" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-52" value="select a block from a (new) hotbar, place it, and remove another" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="760" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-65" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-54" target="Afy7KDOPr_7XvBL8b5q0-63" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-54" value="Place a block with one player, see this change in another player" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="280" y="880" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-61" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-57" target="Afy7KDOPr_7XvBL8b5q0-59" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="640" />
+              <mxPoint x="460" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-57" value="create a pathfinding algorithm that can efficiently find paths between two points in the terrain" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="280" y="520" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-59" value="Implement a dog, which follows players on a distance" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="480" y="760" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-63" value="Place an updatable block with one player, log out, have another player log in and receive updates from the block" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="280" y="1000" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-66" value="Start one world server, start another, shutdown the first.&lt;br&gt;the world should not be inconsistent from a player&#39;s perspective" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="-120" y="760" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-68" value="&lt;h1&gt;Milestones&lt;/h1&gt;&lt;div&gt;green is done&lt;/div&gt;&lt;div&gt;orange costs money&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-320" y="160" width="190" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-71" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Afy7KDOPr_7XvBL8b5q0-69" target="Afy7KDOPr_7XvBL8b5q0-66" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-69" value="Start up a selection of servers, have no failures, misses or inconsistencies" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="-120" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-72" value="Place a voxel that updates itself, log out, log in, receive all missed updates" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="80" y="760" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-76" value="Select variations of a block in the hotbar" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="880" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-77" value="Open the inventory, and change the selection in the hotbar" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="880" y="880" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-82" value="Implement fustrum culling" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="880" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-83" value="Implement world-fog" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1080" y="640" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Afy7KDOPr_7XvBL8b5q0-86" value="Start youtube channel?" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="880" y="400" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="X09qMr5cM8zMZ-8g00jK-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="X09qMr5cM8zMZ-8g00jK-2" target="Afy7KDOPr_7XvBL8b5q0-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="X09qMr5cM8zMZ-8g00jK-2" value="Build log server" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="-120" y="160" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="X09qMr5cM8zMZ-8g00jK-4" value="Create GUI for the different servers&lt;br&gt;(slint)" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="160" width="160" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

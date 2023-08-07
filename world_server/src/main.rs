@@ -60,5 +60,8 @@ fn main() {
 
 fn handle_message(message: WorldServerReq) -> WorldServerRep {
     println!("Received something");
-    WorldServerRep::Pong
+    match message {
+        WorldServerReq::Ping(msg) => WorldServerRep::Pong(msg),
+        _ => WorldServerRep::RequestDenied(message),
+    }
 }

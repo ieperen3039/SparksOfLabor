@@ -28,9 +28,9 @@ fn main() {
         let result: Result<WorldServerRep, NetworkError> = network::query(&socket, request);
 
         match result {
-            Ok(WorldServerRep::Pong) => logger.send_debug("received pong"),
+            Ok(WorldServerRep::Pong(text)) => logger.send_debug(&format!("received pong ({text})")),
             Ok(_) => logger.send_debug("received not-pong"),
-            Err(err) => println!("received error {:?}", err),
+            Err(err) => println!("Error receiving message {:?}", err),
         }
 
         std::thread::sleep(core::time::Duration::from_millis(200));
