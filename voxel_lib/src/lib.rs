@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
-pub mod block_types;
+pub mod voxel;
 pub mod chunk;
 pub mod vector_alias;
-mod voxel_index_error;
+pub mod voxel_errors;
 pub mod voxel_properties;
+pub mod world;
+pub mod block_types;

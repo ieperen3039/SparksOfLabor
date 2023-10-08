@@ -31,6 +31,42 @@ glium::implement_vertex!(
 );
 
 impl Mesh {
+    pub fn empty(display: &glium::Display, texture : glium::texture::RawImage2d<'_, u8>) -> Result<Mesh, SimpleError> {
+        let texture = glium::texture::SrgbTexture2d::new(display, texture).map_err(|e| {
+            SimpleError::new(format!("Could not create texture from image file: {e}"))
+        })?;
+
+        Ok(Mesh {
+            vertices: glium::VertexBuffer::empty(display, 0)
+                .map_err(|e| SimpleError::new(format!("Could not create vertex buffer: {e}")))?,
+            indices: glium::IndexBuffer::empty(display, PrimitiveType::TrianglesList, 0)
+                .map_err(|e| SimpleError::new(format!("Could not create index buffer: {e}")))?,
+            texture,
+        })
+    }
+
+    pub fn from_arrays(
+        display: &glium::Display,
+        vertices : Vec<Vertex>,
+        indices : Vec<u32>,
+        texture : glium::texture::RawImage2d<'_, u8>,
+    ) -> Result<Mesh, SimpleError> {
+        let vertices = glium::VertexBuffer::new(display, &vertices)
+            .map_err(|e| SimpleError::new(format!("Could not create vertex buffer: {e}")))?;
+        let indices = glium::IndexBuffer::new(display, PrimitiveType::TrianglesList, &indices)
+            .map_err(|e| SimpleError::new(format!("Could not create index buffer: {e}")))?;
+
+        let texture = glium::texture::SrgbTexture2d::new(display, texture).map_err(|e| {
+            SimpleError::new(format!("Could not create texture from image file: {e}"))
+        })?;
+
+        return Ok(Mesh {
+            vertices,
+            indices,
+            texture,
+        });
+    }
+
     pub fn from_file(
         display: &glium::Display,
         model_file: File,
@@ -75,11 +111,6 @@ impl Mesh {
             });
         }
 
-        let vertices = glium::VertexBuffer::new(display, &vertices)
-            .map_err(|e| SimpleError::new(format!("Could not create vertex buffer: {e}")))?;
-        let indices = glium::IndexBuffer::new(display, PrimitiveType::TrianglesList, &obj.indices)
-            .map_err(|e| SimpleError::new(format!("Could not create index buffer: {e}")))?;
-
         let image = image::load(BufReader::new(texture_file), image::ImageFormat::Png)
             .map_err(|e| SimpleError::new(format!("Could not load texture from file: {e}")))?
             .to_rgba8();
@@ -88,14 +119,6 @@ impl Mesh {
         let image =
             glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 
-        let texture = glium::texture::SrgbTexture2d::new(display, image).map_err(|e| {
-            SimpleError::new(format!("Could not create texture from image file: {e}"))
-        })?;
-
-        return Ok(Mesh {
-            vertices,
-            indices,
-            texture,
-        });
+        Self::from_arrays(display, vertices, obj.indices.clone(), image)
     }
 }

@@ -1,32 +1,20 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    block_types::Block,
+    voxel::ByteVoxel,
     vector_alias::Coordinate,
-    voxel_index_error::VoxelIndexError,
+    voxel_errors::VoxelIndexError,
     voxel_properties::{VoxelProperties, VoxelTypeDefinitions},
 };
 
 #[typetag::serde]
 pub trait AdvancedVoxel {
-    fn get_base_block(&self) -> Block;
+    fn get_base_block(&self) -> ByteVoxel;
 }
-
-// #[derive(Serialize, Deserialize)]
-// struct Container {
-//     elements : u32
-// }
-
-// #[typetag::serde]
-// impl AdvancedVoxel for Container {
-//     fn get_base_block(&self) -> Block {
-//         return Block::Container;
-//     }
-// }
 
 // could be a typedef
 #[derive(Serialize, Deserialize)]
-pub struct SimpleVoxel(Block);
+pub struct SimpleVoxel(ByteVoxel);
 
 #[derive(Serialize, Deserialize)]
 pub enum Voxel {
@@ -132,22 +120,22 @@ fn to_internal_unchecked(
 }
 
 impl<T> Grid444<T> {
-    fn get<'s>(&'s self, coord: Coordinate) -> &'s T {
+    pub fn get<'s>(&'s self, coord: Coordinate) -> &'s T {
         &self.grid[coord.x as usize][coord.y as usize][coord.z as usize]
     }
 }
 
 impl Chunk64 {
-    fn get_chunk16<'s>(&'s self, coord: Coordinate) -> Result<&'s Chunk16, VoxelIndexError> {
+    pub fn get_chunk16<'s>(&'s self, coord: Coordinate) -> Result<&'s Chunk16, VoxelIndexError> {
         let internal_coord = to_internal(coord, self.zero_coordinate, 16, 4)
-            .ok_or(VoxelIndexError { value: coord })?;
+            .ok_or(VoxelIndexError { coordinate: coord })?;
 
         Ok(self.voxels.get(internal_coord))
     }
 }
 
 impl Chunk16 {
-    fn get_properties<'a>(
+    pub fn get_properties<'a>(
         &self,
         definitions: &'a VoxelTypeDefinitions,
         coord: Coordinate,
@@ -156,11 +144,12 @@ impl Chunk16 {
 
         definitions
             .get_properties_of(voxel)
-            .ok_or(VoxelIndexError { value: coord })
+            .ok_or(VoxelIndexError { coordinate: coord })
     }
 
-    fn get_block_type_absolute(&self, coord: Coordinate) -> Result<Block, VoxelIndexError> {
-        let internal4 = to_internal_unchecked(coord, self.zero_coordinate, 4);
+    pub fn get_block_type_absolute(&self, coord: Coordinate) -> Result<ByteVoxel, VoxelIndexError> {
+        let internal4 = to_internal(coord, self.zero_coordinate, 4, 4)
+            .ok_or(VoxelIndexError { coordinate: coord })?;
 
         match &self.voxels {
             Chunk16Grid::Uniform(SimpleVoxel(voxel_type)) => Ok(*voxel_type),
@@ -182,7 +171,7 @@ impl Chunk16 {
 }
 
 impl Chunk4 {
-    fn get_voxel(&self, coord: Coordinate) -> VoxelRef {
+    pub fn get_voxel(&self, coord: Coordinate) -> VoxelRef {
         match &self.voxels {
             Chunk4Grid::Uniform(voxel) => VoxelRef::Simple(voxel),
             Chunk4Grid::Simple(voxels) => {
@@ -199,7 +188,7 @@ impl Chunk4 {
         }
     }
 
-    fn get_block_relative(&self, coord: Coordinate) -> Block {
+    pub fn get_block_relative(&self, coord: Coordinate) -> ByteVoxel {
         match &self.voxels {
             Chunk4Grid::Uniform(SimpleVoxel(voxel_type)) => *voxel_type,
             Chunk4Grid::Simple(voxels) => {
