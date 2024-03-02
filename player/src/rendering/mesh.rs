@@ -1,6 +1,7 @@
 use std::{fs::File, io::BufReader};
 
 use glium::index::PrimitiveType;
+use nalgebra::{UnitVector3, Vector3};
 use simple_error::SimpleError;
 
 const SOL_OBJ_LOAD_OPTIONS: tobj::LoadOptions = tobj::LoadOptions {
@@ -17,12 +18,6 @@ pub struct Vertex {
     in_texture_coord: [f32; 2],
 }
 
-pub struct Mesh {
-    pub vertices: glium::VertexBuffer<Vertex>,
-    pub indices: glium::IndexBuffer<u32>,
-    pub texture: glium::texture::SrgbTexture2d,
-}
-
 glium::implement_vertex!(
     Vertex,
     in_vertex_position,
@@ -30,8 +25,27 @@ glium::implement_vertex!(
     in_texture_coord
 );
 
+impl Vertex {
+    pub fn new(position: Vector3<f32>, normal: UnitVector3<f32>, texture_coord: [f32; 2]) -> Vertex {
+        Vertex {
+            in_vertex_position: [position.x, position.y, position.z],
+            in_vertex_normal: [normal.x, normal.y, normal.z],
+            in_texture_coord: texture_coord,
+        }
+    }
+}
+
+pub struct Mesh {
+    pub vertices: glium::VertexBuffer<Vertex>,
+    pub indices: glium::IndexBuffer<u32>,
+    pub texture: glium::texture::SrgbTexture2d,
+}
+
 impl Mesh {
-    pub fn empty(display: &glium::Display, texture : glium::texture::RawImage2d<'_, u8>) -> Result<Mesh, SimpleError> {
+    pub fn empty(
+        display: &glium::Display,
+        texture: glium::texture::RawImage2d<'_, u8>,
+    ) -> Result<Mesh, SimpleError> {
         let texture = glium::texture::SrgbTexture2d::new(display, texture).map_err(|e| {
             SimpleError::new(format!("Could not create texture from image file: {e}"))
         })?;
@@ -47,9 +61,9 @@ impl Mesh {
 
     pub fn from_arrays(
         display: &glium::Display,
-        vertices : Vec<Vertex>,
-        indices : Vec<u32>,
-        texture : glium::texture::RawImage2d<'_, u8>,
+        vertices: Vec<Vertex>,
+        indices: Vec<u32>,
+        texture: glium::texture::RawImage2d<'_, u8>,
     ) -> Result<Mesh, SimpleError> {
         let vertices = glium::VertexBuffer::new(display, &vertices)
             .map_err(|e| SimpleError::new(format!("Could not create vertex buffer: {e}")))?;

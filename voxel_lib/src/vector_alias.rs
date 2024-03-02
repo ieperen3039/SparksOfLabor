@@ -2,6 +2,7 @@ use std::ops::Mul;
 
 use nalgebra::{Point3, UnitVector3, Vector3};
 
+pub type ICoordinate = Vector3<usize>;
 pub type Coordinate = Vector3<i32>;
 pub type Coordinate64 = Vector3<i32>;
 
@@ -14,7 +15,7 @@ pub const UNIT_Z: Direction = Direction::new_unchecked(nalgebra::vector![0.0, 0.
 pub const VEC_ZERO: Position = Position::new(0.0, 0.0, 0.0);
 
 pub fn coordinate64_to_absolute(coord: Coordinate64) -> Coordinate {
-    return coord.mul(64);
+    coord.mul(64)
 }
 
 pub enum AxisDirection {

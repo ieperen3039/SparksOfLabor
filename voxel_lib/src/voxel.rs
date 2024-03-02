@@ -22,6 +22,14 @@ pub struct ByteVoxel {
 }
 
 impl ByteVoxel {
+    pub fn new(block_type: BlockType, variant: u32, orientation: VoxelOrientation) -> ByteVoxel {
+        let mut voxel = ByteVoxel { byte : 0 };
+        voxel.set_type(block_type);
+        voxel.set_variant(variant);
+        voxel.set_orientation(orientation);
+        return voxel;
+    }
+
     pub fn get_type(&self) -> BlockType {
         num_traits::FromPrimitive::from_u32(
             self.get_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE),
@@ -133,6 +141,10 @@ impl VoxelOrientation {
     const NUM_BITS_Z: u32 = 2; // one of 4
     const BITS_X_START: u32 = VoxelOrientation::BITS_Z_START + VoxelOrientation::NUM_BITS_Z;
     const NUM_BITS_X: u32 = 4; // one of 6
+
+    pub fn new() -> VoxelOrientation {
+        VoxelOrientation { x_dir : AxisDirection::PosX, z_dir: AxisDirection::PosZ }
+    }
 
     fn axis_from_u32(axis_id: u32) -> AxisDirection {
         match axis_id {
