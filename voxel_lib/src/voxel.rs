@@ -16,7 +16,7 @@ const NUM_BITS_ORIENTATION: u32 = VoxelOrientation::NUM_BITS_X + VoxelOrientatio
 
 const TOTAL_NUM_BITS: u32 = NUM_BITS_BLOCK_TYPE + NUM_BITS_VARIANT + NUM_BITS_ORIENTATION;
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub struct ByteVoxel {
     byte: u32,
 }

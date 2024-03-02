@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    block_types::BlockType,
     vector_alias::{Coordinate, ICoordinate},
-    voxel::ByteVoxel,
+    voxel::{ByteVoxel, VoxelOrientation},
     voxel_errors::VoxelIndexError,
     voxel_properties::{VoxelProperties, VoxelTypeDefinitions},
 };
@@ -10,10 +11,11 @@ use crate::{
 #[typetag::serde]
 pub trait AdvancedVoxel {
     fn get_base_block(&self) -> ByteVoxel;
+    fn get_copy(&self) -> Box<dyn AdvancedVoxel>;
 }
 
 // could be a typedef
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub struct SimpleVoxel(ByteVoxel);
 
 #[derive(Serialize, Deserialize)]
@@ -116,7 +118,11 @@ fn to_internal(
         return None;
     }
 
-    Some(ICoordinate::new(internal_coord.x as usize, internal_coord.y as usize, internal_coord.z as usize))
+    Some(ICoordinate::new(
+        internal_coord.x as usize,
+        internal_coord.y as usize,
+        internal_coord.z as usize,
+    ))
 }
 
 fn to_internal_unchecked(
@@ -126,20 +132,36 @@ fn to_internal_unchecked(
 ) -> ICoordinate {
     let relative_coord = coord - zero_coord;
     let internal_coord = relative_coord / internal_step;
-    ICoordinate::new(internal_coord.x as usize, internal_coord.y as usize, internal_coord.z as usize)
+    ICoordinate::new(
+        internal_coord.x as usize,
+        internal_coord.y as usize,
+        internal_coord.z as usize,
+    )
 }
 
-fn from_internal(
-    coord: ICoordinate,
-    zero_coord: Coordinate,
-    internal_step: i32,
-) -> Coordinate {
+fn from_internal(coord: ICoordinate, zero_coord: Coordinate, internal_step: i32) -> Coordinate {
     zero_coord + (Coordinate::new(coord.x as i32, coord.y as i32, coord.z as i32) * internal_step)
 }
 
 impl<T> Grid444<T> {
+    pub fn new<F>(generator: F) -> Grid444<T>
+    where
+        F: Fn(ICoordinate) -> T,
+    {
+        Grid444 {
+            grid: std::array::from_fn(|x| {
+                std::array::from_fn(|y| {
+                    std::array::from_fn(|z| generator(ICoordinate::new(x, y, z)))
+                })
+            }),
+        }
+    }
+
     pub fn get<'s>(&'s self, coord: ICoordinate) -> &'s T {
         &self.grid[coord.x][coord.y][coord.z]
+    }
+    pub fn set<'s>(&'s mut self, coord: ICoordinate, new_value: T) {
+        self.grid[coord.x][coord.y][coord.z] = new_value;
     }
 }
 
@@ -153,7 +175,12 @@ impl Chunk64 {
 
     pub fn get_coordinate_from_index(&self, block_index: ICoordinate) -> Coordinate {
         let zero_coord = self.zero_coordinate;
-        zero_coord + Coordinate::new(block_index.x as i32, block_index.y as i32, block_index.z as i32)
+        zero_coord
+            + Coordinate::new(
+                block_index.x as i32,
+                block_index.y as i32,
+                block_index.z as i32,
+            )
     }
 
     pub fn for_each<Action: FnMut(ICoordinate, VoxelRef)>(&self, mut action: Action) {
@@ -174,7 +201,9 @@ impl Chunk64 {
                                             let chunk1_coord = ICoordinate::new(x, y, z);
 
                                             let byte_voxel = match &chunk16.voxels {
-                                                Chunk16Grid::Uniform(voxel) => VoxelRef::Simple(voxel),
+                                                Chunk16Grid::Uniform(voxel) => {
+                                                    VoxelRef::Simple(voxel)
+                                                },
                                                 Chunk16Grid::Simple(voxels) => {
                                                     let grid = voxels.get(chunk4_coord);
                                                     VoxelRef::Simple(grid.get(chunk1_coord))
@@ -234,6 +263,16 @@ impl Chunk16 {
 }
 
 impl Chunk4 {
+    pub fn new() -> Chunk4 {
+        Chunk4 {
+            voxels: Chunk4Grid::Uniform(SimpleVoxel(ByteVoxel::new(
+                BlockType::Air,
+                0,
+                VoxelOrientation::new(),
+            ))),
+        }
+    }
+
     pub fn get_voxel_internal(&self, coord: ICoordinate) -> VoxelRef {
         match &self.voxels {
             Chunk4Grid::Uniform(voxel) => VoxelRef::Simple(voxel),
@@ -266,5 +305,82 @@ impl Chunk4 {
                 }
             },
         }
+    }
+
+    pub fn set_block_internal(&mut self, coord: ICoordinate, new_voxel: Voxel) {
+        match new_voxel {
+            Voxel::Simple(new_voxel) => match &mut self.voxels {
+                Chunk4Grid::Uniform(old_voxel) => {
+                    if &new_voxel == old_voxel {
+                        return;
+                    }
+
+                    self.voxels = Chunk4Grid::Simple(Grid444 {
+                        grid: [[[old_voxel.clone(); 4]; 4]; 4],
+                    })
+                },
+                Chunk4Grid::Simple(grid) => grid.set(coord, new_voxel),
+                Chunk4Grid::Detailed(grid) => grid.set(coord, Voxel::Simple(new_voxel)),
+            },
+            Voxel::Advanced(_) => match &mut self.voxels {
+                Chunk4Grid::Uniform(old_voxel) => {
+                    let mut new_grid = Grid444::new(|_| Voxel::Simple(old_voxel.clone()));
+                    new_grid.set(coord, new_voxel);
+                    self.voxels = Chunk4Grid::Detailed(Box::new(new_grid));
+                },
+                Chunk4Grid::Simple(grid) => {
+                    let mut new_grid = Grid444::new(|c| Voxel::Simple(grid.get(c).clone()));
+                    new_grid.set(coord, new_voxel);
+                    self.voxels = Chunk4Grid::Detailed(Box::new(new_grid));
+                },
+                Chunk4Grid::Detailed(grid) => grid.set(coord, new_voxel),
+            },
+        }
+    }
+
+    // attempt to turn this chunk into a uniform chunk
+    pub fn compress(&mut self) {
+        let uniform_voxel = match &self.voxels {
+            Chunk4Grid::Uniform(_) => return,
+            Chunk4Grid::Simple(grid) => {
+                let base = grid.get(ICoordinate::new(3, 3, 3));
+                for x in 0..4usize {
+                    for y in 0..4usize {
+                        for z in 0..4usize {
+                            if base != grid.get(ICoordinate::new(x, y, z)) {
+                                return;
+                            }
+                        }
+                    }
+                }
+                base
+            },
+            Chunk4Grid::Detailed(grid) => {
+                let base = {
+                    if let Voxel::Simple(base) = grid.get(ICoordinate::new(3, 3, 3)) {
+                        base
+                    } else {
+                        return;
+                    }
+                };
+
+                for x in 0..4usize {
+                    for y in 0..4usize {
+                        for z in 0..4usize {
+                            if let Voxel::Simple(other) = grid.get(ICoordinate::new(x, y, z)) {
+                                if base != other {
+                                    return;
+                                }
+                            } else {
+                                return;
+                            }
+                        }
+                    }
+                }
+                base
+            },
+        };
+
+        self.voxels = Chunk4Grid::Uniform(*uniform_voxel);
     }
 }
