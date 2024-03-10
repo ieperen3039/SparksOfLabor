@@ -14,3 +14,4 @@ pub mod asset;
 #[cfg(test)]
 mod chunk_tests;
 pub mod chunk_2;
+pub mod advanced_voxel;

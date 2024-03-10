@@ -131,6 +131,7 @@ impl Debug for BaseVoxel {
     }
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct VoxelOrientation {
     pub x_dir: AxisDirection,
     pub z_dir: AxisDirection,

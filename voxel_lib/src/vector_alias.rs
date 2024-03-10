@@ -1,6 +1,7 @@
 use std::ops::Mul;
 
 use nalgebra::{Point3, UnitVector3, Vector3};
+use serde::{Deserialize, Serialize};
 
 pub type ICoordinate = Vector3<usize>;
 pub type Coordinate = Vector3<i32>;
@@ -18,6 +19,7 @@ pub fn coordinate64_to_absolute(coord: Coordinate64) -> Coordinate {
     coord.mul(64)
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub enum AxisDirection {
     PosX,
     PosY,

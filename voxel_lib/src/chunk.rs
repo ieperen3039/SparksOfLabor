@@ -1,16 +1,17 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
-use crate::voxel::{Voxel, VoxelRef};
+use crate::voxel::{self, Voxel, VoxelRef};
 use crate::{
-    block::{BaseVoxel, VoxelOrientation},
-    block_types::BlockType,
+    block::BaseVoxel,
     vector_alias::{Coordinate, ICoordinate},
     voxel_errors::VoxelIndexError,
     voxel_properties::{VoxelProperties, VoxelTypeDefinitions},
 };
 
 #[derive(Serialize, Deserialize)]
-enum VoxelOrIndex {
+enum ChunkB32Entry {
     Direct(BaseVoxel),
     Mapped(u16),
 }
@@ -23,12 +24,14 @@ pub struct Chunk64 {
 
 #[derive(Serialize, Deserialize)]
 struct BlockMapping {
+    // 2^16 = 65536 different element types, and there are only 4096 voxels per chunk.
     id: u16,
+    num_elements: u16,
     element: Voxel,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Chunk16 {
+pub struct Chunk16 {
     grid: Chunk16Grid,
     palette: Vec<BlockMapping>,
     zero_coordinate: Coordinate,
@@ -37,21 +40,21 @@ struct Chunk16 {
 #[derive(Serialize, Deserialize)]
 enum Chunk16Grid {
     // 2^16 = 65536 different element types, but there are only 4096 voxels per chunk.
-    // we instead put all simple voxels directly in the grid, and only map the advanced voxels
-    B32([[[VoxelOrIndex; 16]; 16]; 16]),
+    // we instead put all simple voxels directly in the grid for 32 bits per voxel, and only map the advanced voxels
+    B32(Box<[[[ChunkB32Entry; 16]; 16]; 16]>),
     // 2^8 = 256 different element types
-    B8([[[u8; 16]; 16]; 16]),
+    B8(Box<[[[u8; 16]; 16]; 16]>),
     // 2^4 = 16 different element types
-    B4([[[u8; 8]; 16]; 16]),
+    B4(Box<[[[u8; 8]; 16]; 16]>),
     // 2^2 = 4 different element types
-    B2([[[u8; 4]; 16]; 16]),
+    B2(Box<[[[u8; 4]; 16]; 16]>),
 }
 
 impl VoxelRef<'_> {
     pub fn get_base(&self) -> BaseVoxel {
         match self {
             VoxelRef::Simple(&v) => v,
-            VoxelRef::Advanced(v) => v.get_base_block(),
+            VoxelRef::Advanced(v) => v.as_trait().get_base_block(),
         }
     }
 }
@@ -173,26 +176,144 @@ impl Chunk16 {
         let internal_coord = to_internal(coord, self.zero_coordinate, 16, 16)
             .ok_or(VoxelIndexError { coordinate: coord })?;
 
-        Ok(self.get_voxel_internal_unchecked(internal_coord))
+        Ok(self.get_voxel_internal(internal_coord))
     }
 
-    pub fn get_voxel_internal_unchecked(&self, coord: ICoordinate) -> VoxelRef {
-        let index = match &self.grid {
+    pub fn get_voxel_internal(&self, coord: ICoordinate) -> VoxelRef {
+        let id = match &self.grid {
             Chunk16Grid::B32(grid) => {
                 let either = &grid[coord.x][coord.y][coord.z];
                 match either {
-                    VoxelOrIndex::Direct(block) => return VoxelRef::Simple(&block),
-                    VoxelOrIndex::Mapped(idx) => idx.to_owned(),
+                    ChunkB32Entry::Direct(block) => return VoxelRef::Simple(&block),
+                    ChunkB32Entry::Mapped(idx) => idx.to_owned(),
                 }
             },
-            Chunk16Grid::B8(grid) => {
-                grid[coord.x][coord.y][coord.z] as u16
+            Chunk16Grid::B8(grid) => grid[coord.x][coord.y][coord.z] as u16,
+            Chunk16Grid::B4(grid) => {
+                let byte = grid[coord.x][coord.y][coord.z / 2] as u16;
+                if coord.z % 2 == 0 {
+                    byte & 0b1111
+                } else {
+                    byte >> 4
+                }
             },
-            Chunk16Grid::B4(grid) => todo!(),
-            Chunk16Grid::B2(grid) => todo!(),
+            Chunk16Grid::B2(grid) => {
+                let byte = grid[coord.x][coord.y][coord.z / 4] as u16;
+                let index_in_byte = coord.z % 4;
+                let num_bit_shifts = index_in_byte * 2;
+                (byte & (0b11 << num_bit_shifts)) >> num_bit_shifts
+            },
         };
 
-        let search_result = self.palette.binary_search_by_key(&index, |m| m.id).expect("id in grid not found in palette");
-        self.palette[search_result].element.as_voxel_ref()
+        self.get_palette(id).as_voxel_ref()
+    }
+
+    pub fn set_voxel_internal_base(&mut self, coord: ICoordinate, voxel: Voxel) {
+        if let Chunk16Grid::B32(grid) = &mut self.grid {
+            match voxel {
+                Voxel::Simple(voxel) => {
+                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::Direct(voxel)
+                },
+                Voxel::Advanced(_) => {
+                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::Mapped(self.add_palette(voxel))
+                },
+            }
+            todo!("check if palette may be removed");
+            return;
+        }
+
+        let new_id = self.add_palette(voxel) as u8;
+        if self.palette.len() > self.max_num_palettes() {
+            self.upgrade();
+        }
+
+        match &mut self.grid {
+            Chunk16Grid::B8(grid) => grid[coord.x][coord.y][coord.z] = new_id,
+            Chunk16Grid::B4(grid) => {
+                let byte_ref = &mut grid[coord.x][coord.y][coord.z / 2];
+                let id_4bit = new_id & 0b1111;
+
+                if coord.z % 2 == 0 {
+                    *byte_ref &= 0b11110000;
+                    *byte_ref |= id_4bit;
+                } else {
+                    *byte_ref &= 0b00001111;
+                    *byte_ref |= id_4bit << 4;
+                }
+            },
+            Chunk16Grid::B2(grid) => {
+                let byte_ref = &mut grid[coord.x][coord.y][coord.z / 4];
+                let index_in_byte = coord.z % 4;
+                let num_bit_shifts = index_in_byte * 2;
+                let id_2bit = new_id & 0b11;
+
+                *byte_ref &= !(0b11 << num_bit_shifts);
+                *byte_ref |= id_2bit << num_bit_shifts;
+            },
+            Chunk16Grid::B32(_) => panic!("Chunk16Grid::B32 should have been handled separately"),
+        };
+    }
+
+    fn get_palette(&self, id: u16) -> &Voxel {
+        for ele in self.palette {
+            if ele.id == id {
+                return &ele.element;
+            }
+        }
+
+        unreachable!("Palette may never be empty")
+    }
+
+    fn add_palette(&mut self, voxel: Voxel) -> u16 {
+        // first see if it is already in here
+        for ele in &mut self.palette {
+            if ele.element == voxel {
+                ele.num_elements += 1;
+                return ele.id;
+            }
+        }
+
+        // otherwise, find the _last_ gap in the indices; we will use this index
+        // (we find the last, not the first, because insertion is cheaper this way)
+        for idx in (0..self.palette.len()).rev() {
+            if self.palette[idx].id as usize != idx {
+                self.palette.insert(
+                    idx,
+                    BlockMapping {
+                        id: idx as u16,
+                        num_elements: 1,
+                        element: voxel,
+                    },
+                );
+
+                return idx as u16;
+            }
+        }
+
+        // no gap in the indices; append
+        let new_id = self.palette.len() as u16;
+        self.palette.push(BlockMapping {
+            id: new_id,
+            num_elements: 1,
+            element: voxel,
+        });
+        new_id
+    }
+
+    fn max_num_palettes(&self) -> usize {
+        match self.grid {
+            Chunk16Grid::B32(_) => u32::MAX as usize,
+            Chunk16Grid::B8(_) => (1 << 8) - 1,
+            Chunk16Grid::B4(_) => (1 << 4) - 1,
+            Chunk16Grid::B2(_) => (1 << 2) - 1,
+        }
+    }
+
+    fn upgrade(&self) {
+        todo!()
+    }
+
+    fn downgrade(&self) {
+        todo!()
     }
 }
