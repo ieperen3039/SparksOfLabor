@@ -1,5 +1,4 @@
 
 #[test]
-fn simple_store_and_fetch() {
-    
+fn simple_store_and_fetch4() {
 }

@@ -6,7 +6,7 @@ use sol_voxel_lib::{
     vector_alias::{
         AxisDirection, Coordinate, Coordinate64, ICoordinate,
     },
-    voxel::{ByteVoxel, VoxelOrientation},
+    block::{BaseVoxel, VoxelOrientation},
     world::World,
 };
 
@@ -17,7 +17,7 @@ fn add_quad(
     indices: &mut Vec<u32>,
     coord: Coordinate,
     direction: AxisDirection,
-    block_type: ByteVoxel,
+    block_type: BaseVoxel,
 ) {
     let normal = direction.get_unit();
     let voxel_middle = Vector3::new(coord.x as f32, coord.y as f32, coord.z as f32).add_scalar(0.5);
@@ -58,7 +58,7 @@ fn create_mesh(
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
 
-    let default_air = ByteVoxel::new(BlockType::Air, 0, VoxelOrientation::new());
+    let default_air = BaseVoxel::new(BlockType::Air, 0, VoxelOrientation::new());
     let mut voxel_grid = [[[default_air; 66]; 66]; 66];
 
     chunk64.for_each(|coord, voxel| {

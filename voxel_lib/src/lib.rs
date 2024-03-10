@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+pub mod block;
 pub mod voxel;
 pub mod chunk;
 pub mod vector_alias;
@@ -12,3 +13,4 @@ pub mod asset;
 
 #[cfg(test)]
 mod chunk_tests;
+pub mod chunk_2;

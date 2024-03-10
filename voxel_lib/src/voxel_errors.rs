@@ -1,4 +1,4 @@
-use crate::{vector_alias::*, voxel};
+use crate::{vector_alias::*, block};
 use simple_error::SimpleError;
 
 #[derive(Debug)]
@@ -8,7 +8,7 @@ pub struct VoxelIndexError {
 
 #[derive(Debug)]
 pub struct UnknownBlockTypeError {
-    pub value: voxel::ByteVoxel,
+    pub value: block::BaseVoxel,
     pub coordinate: Coordinate,
 }
 

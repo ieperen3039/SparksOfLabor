@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{block_types::BlockType, voxel::ByteVoxel};
+use crate::{block_types::BlockType, block::BaseVoxel};
 
 
 pub struct VoxelProperties {
@@ -12,7 +12,7 @@ pub struct VoxelTypeDefinitions {
 }
 
 impl VoxelTypeDefinitions {
-    pub fn get_properties_of(&self, voxel: ByteVoxel) -> Option<&VoxelProperties> {
+    pub fn get_properties_of(&self, voxel: BaseVoxel) -> Option<&VoxelProperties> {
         self.map.get(&voxel.get_type())
     }
 }

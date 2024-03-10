@@ -1,90 +1,56 @@
 use serde::{Deserialize, Serialize};
 
+use crate::voxel::{Voxel, VoxelRef};
 use crate::{
+    block::{BaseVoxel, VoxelOrientation},
     block_types::BlockType,
     vector_alias::{Coordinate, ICoordinate},
-    voxel::{ByteVoxel, VoxelOrientation},
     voxel_errors::VoxelIndexError,
     voxel_properties::{VoxelProperties, VoxelTypeDefinitions},
 };
 
-#[typetag::serde]
-pub trait AdvancedVoxel {
-    fn get_base_block(&self) -> ByteVoxel;
-    fn get_copy(&self) -> Box<dyn AdvancedVoxel>;
-}
-
-// could be a typedef
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
-pub struct SimpleVoxel(ByteVoxel);
-
 #[derive(Serialize, Deserialize)]
-pub enum Voxel {
-    // bitfield of type + variant + rotation
-    Simple(SimpleVoxel),
-    // reference to heap-allocated voxel definition
-    Advanced(Box<dyn AdvancedVoxel>),
-}
-
-pub enum VoxelRef<'a> {
-    // bitfield of type + variant + rotation
-    Simple(&'a SimpleVoxel),
-    // reference to heap-allocated voxel definition
-    Advanced(&'a dyn AdvancedVoxel),
-}
-
-#[derive(Serialize, Deserialize)]
-struct Grid444<T> {
-    grid: [[[T; 4]; 4]; 4],
-}
-
-// chunk of 264 bytes
-#[derive(Serialize, Deserialize)]
-enum Chunk4Grid {
-    // a chunk containing just one type of block (air, slate)
-    Uniform(SimpleVoxel),
-    // a chunk containing only simple voxels
-    // 256 bytes
-    Simple(Grid444<SimpleVoxel>),
-    // any other chunk containing any combination of voxel types
-    // box of 1024 bytes
-    Detailed(Box<Grid444<Voxel>>),
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Chunk4 {
-    voxels: Chunk4Grid,
-}
-
-#[derive(Serialize, Deserialize)]
-enum Chunk16Grid {
-    // a chunk16 containing just one type of block (air, slate)
-    Uniform(SimpleVoxel),
-    // a chunk16 consisting only out of simple chunks
-    // box of 16_384 bytes / 16 KB
-    Simple(Box<Grid444<Grid444<SimpleVoxel>>>),
-    // any combination of chunks
-    // box of 16_896 bytes / 16.5 KB
-    Detailed(Box<Grid444<Chunk4>>),
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Chunk16 {
-    voxels: Chunk16Grid,
-    zero_coordinate: Coordinate,
+enum VoxelOrIndex {
+    Direct(BaseVoxel),
+    Mapped(u16),
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Chunk64 {
-    // 2.048 bytes / 2 KB
-    voxels: Grid444<Chunk16>,
+    voxels: [[[Chunk16; 4]; 4]; 4],
     zero_coordinate: Coordinate,
 }
 
+#[derive(Serialize, Deserialize)]
+struct BlockMapping {
+    id: u16,
+    element: Voxel,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Chunk16 {
+    grid: Chunk16Grid,
+    palette: Vec<BlockMapping>,
+    zero_coordinate: Coordinate,
+}
+
+#[derive(Serialize, Deserialize)]
+enum Chunk16Grid {
+    // 2^16 = 65536 different element types, but there are only 4096 voxels per chunk.
+    // we instead put all simple voxels directly in the grid, and only map the advanced voxels
+    B32([[[VoxelOrIndex; 16]; 16]; 16]),
+    // 2^8 = 256 different element types
+    B8([[[u8; 16]; 16]; 16]),
+    // 2^4 = 16 different element types
+    B4([[[u8; 8]; 16]; 16]),
+    // 2^2 = 4 different element types
+    B2([[[u8; 4]; 16]; 16]),
+}
+
 impl VoxelRef<'_> {
-    pub fn get_base(&self) -> ByteVoxel {
+    pub fn get_base(&self) -> BaseVoxel {
         match self {
-            VoxelRef::Simple(SimpleVoxel(v)) => *v,
+            VoxelRef::Simple(&v) => v,
             VoxelRef::Advanced(v) => v.get_base_block(),
         }
     }
@@ -143,34 +109,16 @@ fn from_internal(coord: ICoordinate, zero_coord: Coordinate, internal_step: i32)
     zero_coord + (Coordinate::new(coord.x as i32, coord.y as i32, coord.z as i32) * internal_step)
 }
 
-impl<T> Grid444<T> {
-    pub fn new<F>(generator: F) -> Grid444<T>
-    where
-        F: Fn(ICoordinate) -> T,
-    {
-        Grid444 {
-            grid: std::array::from_fn(|x| {
-                std::array::from_fn(|y| {
-                    std::array::from_fn(|z| generator(ICoordinate::new(x, y, z)))
-                })
-            }),
-        }
-    }
-
-    pub fn get<'s>(&'s self, coord: ICoordinate) -> &'s T {
-        &self.grid[coord.x][coord.y][coord.z]
-    }
-    pub fn set<'s>(&'s mut self, coord: ICoordinate, new_value: T) {
-        self.grid[coord.x][coord.y][coord.z] = new_value;
-    }
-}
-
 impl Chunk64 {
     pub fn get_chunk16<'s>(&'s self, coord: Coordinate) -> Result<&'s Chunk16, VoxelIndexError> {
         let internal_coord = to_internal(coord, self.zero_coordinate, 16, 4)
             .ok_or(VoxelIndexError { coordinate: coord })?;
 
-        Ok(self.voxels.get(internal_coord))
+        Ok(self.get_chunk16_internal_unchecked(internal_coord))
+    }
+
+    fn get_chunk16_internal_unchecked(&self, internal_coord: ICoordinate) -> &Chunk16 {
+        &self.voxels[internal_coord.x][internal_coord.y][internal_coord.z]
     }
 
     pub fn get_coordinate_from_index(&self, block_index: ICoordinate) -> Coordinate {
@@ -188,37 +136,17 @@ impl Chunk64 {
         for x16 in 0..4usize {
             for y16 in 0..4usize {
                 for z16 in 0..4usize {
-                    let chunk16 = &self.voxels.grid[x16][y16][z16];
-                    let index_16 = ICoordinate::new(x16, y16, z16) * 16;
-                    for x4 in 0..4usize {
-                        for y4 in 0..4usize {
-                            for z4 in 0..4usize {
-                                let chunk4_coord = ICoordinate::new(x4, y4, z4);
-                                let index_4 = chunk4_coord * 4;
-                                for x in 0..4usize {
-                                    for y in 0..4usize {
-                                        for z in 0..4usize {
-                                            let chunk1_coord = ICoordinate::new(x, y, z);
+                    let chunk16 = &self.voxels[x16][y16][z16];
+                    let index_vector_16_base = ICoordinate::new(x16, y16, z16) * 16;
+                    for x in 0..16usize {
+                        for y in 0..16usize {
+                            for z in 0..16usize {
+                                let index_vector = ICoordinate::new(x, y, z);
 
-                                            let byte_voxel = match &chunk16.voxels {
-                                                Chunk16Grid::Uniform(voxel) => {
-                                                    VoxelRef::Simple(voxel)
-                                                },
-                                                Chunk16Grid::Simple(voxels) => {
-                                                    let grid = voxels.get(chunk4_coord);
-                                                    VoxelRef::Simple(grid.get(chunk1_coord))
-                                                },
-                                                Chunk16Grid::Detailed(voxels) => {
-                                                    let chunk4 = voxels.get(chunk4_coord);
-                                                    chunk4.get_voxel_internal(chunk1_coord)
-                                                },
-                                            };
+                                let voxel = todo!();
 
-                                            let coord = index_16 + index_4 + chunk1_coord;
-                                            action(coord, byte_voxel);
-                                        }
-                                    }
-                                }
+                                let coord = index_vector_16_base + index_vector;
+                                action(coord, voxel);
                             }
                         }
                     }
@@ -242,145 +170,29 @@ impl Chunk16 {
     }
 
     pub fn get_voxel(&self, coord: Coordinate) -> Result<VoxelRef, VoxelIndexError> {
-        let chunk4_coord = to_internal(coord, self.zero_coordinate, 4, 4)
+        let internal_coord = to_internal(coord, self.zero_coordinate, 16, 16)
             .ok_or(VoxelIndexError { coordinate: coord })?;
 
-        let chunk4_zero_coord = from_internal(chunk4_coord, self.zero_coordinate, 4);
-        let internal1 = to_internal_unchecked(coord, chunk4_zero_coord, 1);
-
-        match &self.voxels {
-            Chunk16Grid::Uniform(voxel) => Ok(VoxelRef::Simple(voxel)),
-            Chunk16Grid::Simple(voxels) => {
-                let grid = voxels.get(chunk4_coord);
-                Ok(VoxelRef::Simple(grid.get(internal1)))
-            },
-            Chunk16Grid::Detailed(voxels) => {
-                let chunk4 = voxels.get(chunk4_coord);
-                Ok(chunk4.get_voxel_internal(internal1))
-            },
-        }
-    }
-}
-
-impl Chunk4 {
-    pub fn new() -> Chunk4 {
-        Chunk4 {
-            voxels: Chunk4Grid::Uniform(SimpleVoxel(ByteVoxel::new(
-                BlockType::Air,
-                0,
-                VoxelOrientation::new(),
-            ))),
-        }
+        Ok(self.get_voxel_internal_unchecked(internal_coord))
     }
 
-    pub fn get_voxel_internal(&self, coord: ICoordinate) -> VoxelRef {
-        match &self.voxels {
-            Chunk4Grid::Uniform(voxel) => VoxelRef::Simple(voxel),
-            Chunk4Grid::Simple(voxels) => {
-                let voxel = voxels.get(coord);
-                VoxelRef::Simple(voxel)
-            },
-            Chunk4Grid::Detailed(voxels) => {
-                let voxel_impl = voxels.get(coord);
-                match voxel_impl {
-                    Voxel::Simple(voxel) => VoxelRef::Simple(voxel),
-                    Voxel::Advanced(voxel_box) => VoxelRef::Advanced(voxel_box.as_ref()),
+    pub fn get_voxel_internal_unchecked(&self, coord: ICoordinate) -> VoxelRef {
+        let index = match &self.grid {
+            Chunk16Grid::B32(grid) => {
+                let either = &grid[coord.x][coord.y][coord.z];
+                match either {
+                    VoxelOrIndex::Direct(block) => return VoxelRef::Simple(&block),
+                    VoxelOrIndex::Mapped(idx) => idx.to_owned(),
                 }
             },
-        }
-    }
-
-    pub fn get_block_internal(&self, coord: ICoordinate) -> ByteVoxel {
-        match &self.voxels {
-            Chunk4Grid::Uniform(SimpleVoxel(voxel_type)) => *voxel_type,
-            Chunk4Grid::Simple(voxels) => {
-                let SimpleVoxel(voxel_type) = voxels.get(coord);
-                *voxel_type
+            Chunk16Grid::B8(grid) => {
+                grid[coord.x][coord.y][coord.z] as u16
             },
-            Chunk4Grid::Detailed(voxels) => {
-                let voxel_impl = voxels.get(coord);
-                match voxel_impl {
-                    Voxel::Simple(SimpleVoxel(voxel_type)) => *voxel_type,
-                    Voxel::Advanced(advanced_voxel) => advanced_voxel.get_base_block(),
-                }
-            },
-        }
-    }
-
-    pub fn set_block_internal(&mut self, coord: ICoordinate, new_voxel: Voxel) {
-        match new_voxel {
-            Voxel::Simple(new_voxel) => match &mut self.voxels {
-                Chunk4Grid::Uniform(old_voxel) => {
-                    if &new_voxel == old_voxel {
-                        return;
-                    }
-
-                    self.voxels = Chunk4Grid::Simple(Grid444 {
-                        grid: [[[old_voxel.clone(); 4]; 4]; 4],
-                    })
-                },
-                Chunk4Grid::Simple(grid) => grid.set(coord, new_voxel),
-                Chunk4Grid::Detailed(grid) => grid.set(coord, Voxel::Simple(new_voxel)),
-            },
-            Voxel::Advanced(_) => match &mut self.voxels {
-                Chunk4Grid::Uniform(old_voxel) => {
-                    let mut new_grid = Grid444::new(|_| Voxel::Simple(old_voxel.clone()));
-                    new_grid.set(coord, new_voxel);
-                    self.voxels = Chunk4Grid::Detailed(Box::new(new_grid));
-                },
-                Chunk4Grid::Simple(grid) => {
-                    let mut new_grid = Grid444::new(|c| Voxel::Simple(grid.get(c).clone()));
-                    new_grid.set(coord, new_voxel);
-                    self.voxels = Chunk4Grid::Detailed(Box::new(new_grid));
-                },
-                Chunk4Grid::Detailed(grid) => grid.set(coord, new_voxel),
-            },
-        }
-    }
-
-    // attempt to turn this chunk into a uniform chunk
-    pub fn compress(&mut self) {
-        let uniform_voxel = match &self.voxels {
-            Chunk4Grid::Uniform(_) => return,
-            Chunk4Grid::Simple(grid) => {
-                let base = grid.get(ICoordinate::new(3, 3, 3));
-                for x in 0..4usize {
-                    for y in 0..4usize {
-                        for z in 0..4usize {
-                            if base != grid.get(ICoordinate::new(x, y, z)) {
-                                return;
-                            }
-                        }
-                    }
-                }
-                base
-            },
-            Chunk4Grid::Detailed(grid) => {
-                let base = {
-                    if let Voxel::Simple(base) = grid.get(ICoordinate::new(3, 3, 3)) {
-                        base
-                    } else {
-                        return;
-                    }
-                };
-
-                for x in 0..4usize {
-                    for y in 0..4usize {
-                        for z in 0..4usize {
-                            if let Voxel::Simple(other) = grid.get(ICoordinate::new(x, y, z)) {
-                                if base != other {
-                                    return;
-                                }
-                            } else {
-                                return;
-                            }
-                        }
-                    }
-                }
-                base
-            },
+            Chunk16Grid::B4(grid) => todo!(),
+            Chunk16Grid::B2(grid) => todo!(),
         };
 
-        self.voxels = Chunk4Grid::Uniform(*uniform_voxel);
+        let search_result = self.palette.binary_search_by_key(&index, |m| m.id).expect("id in grid not found in palette");
+        self.palette[search_result].element.as_voxel_ref()
     }
 }
