@@ -5,8 +5,6 @@ use sol_log_server::log::Logger;
 use sol_network_lib::network::{self, NetworkError};
 use sol_world_messages::{WorldServerRep, WorldServerReq};
 
-mod rendering;
-
 extern crate zmq;
 
 fn main() {
@@ -37,8 +35,4 @@ fn main() {
     }
 
     logger.send_status("Player offline");
-    // let render_engine = RenderEngine::new(800, 800)
-    //     .expect("Could not create render engine");
-
-    // render_engine.run_until_close();
 }

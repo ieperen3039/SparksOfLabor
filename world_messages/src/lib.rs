@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use sol_voxel_lib::{
-    chunk::{Chunk16, Chunk4, Chunk64, Voxel},
     vector_alias::Coordinate,
 };
 

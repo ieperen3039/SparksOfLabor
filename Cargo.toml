@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
     "address_server",
     "entity_lib",
@@ -18,3 +19,6 @@ members = [
     "world_messages",
     "world_server",
 ]
+
+[patch.crates-io]
+minecraft-protocol = { path = "../RustProjects/minecraft-protocol/minecraft-protocol" }
