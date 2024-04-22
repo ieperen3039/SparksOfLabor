@@ -1,18 +1,19 @@
 use std::collections::BTreeMap;
 
+use minecraft_protocol::ids::blocks::Block;
+use minecraft_protocol::nbt::NbtTag;
 use serde::{Deserialize, Serialize};
 
-use crate::voxel::{self, Voxel, VoxelRef};
+use crate::voxel::{Voxel, VoxelRef};
 use crate::{
     block::BaseVoxel,
     vector_alias::{Coordinate, ICoordinate},
     voxel_errors::VoxelIndexError,
-    voxel_properties::{VoxelProperties, VoxelTypeDefinitions},
 };
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 enum ChunkB32Entry {
-    Direct(BaseVoxel),
+    Direct(u32),
     Mapped(u16),
 }
 
@@ -27,7 +28,7 @@ struct BlockMapping {
     // 2^16 = 65536 different element types, and there are only 4096 voxels per chunk.
     id: u16,
     num_elements: u16,
-    element: Voxel,
+    block_type: Voxel,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -48,15 +49,6 @@ enum Chunk16Grid {
     B4(Box<[[[u8; 8]; 16]; 16]>),
     // 2^2 = 4 different element types
     B2(Box<[[[u8; 4]; 16]; 16]>),
-}
-
-impl VoxelRef<'_> {
-    pub fn get_base(&self) -> BaseVoxel {
-        match self {
-            VoxelRef::Simple(&v) => v,
-            VoxelRef::Advanced(v) => v.as_trait().get_base_block(),
-        }
-    }
 }
 
 fn to_internal(
@@ -134,7 +126,7 @@ impl Chunk64 {
             )
     }
 
-    pub fn for_each<Action: FnMut(ICoordinate, VoxelRef)>(&self, mut action: Action) {
+    pub fn for_each<Action: FnMut(&ICoordinate, VoxelRef)>(&self, mut action: Action) {
         // I regret nothing
         for x16 in 0..4usize {
             for y16 in 0..4usize {
@@ -149,7 +141,7 @@ impl Chunk64 {
                                 let voxel = todo!();
 
                                 let coord = index_vector_16_base + index_vector;
-                                action(coord, voxel);
+                                action(&coord, voxel);
                             }
                         }
                     }
@@ -160,18 +152,6 @@ impl Chunk64 {
 }
 
 impl Chunk16 {
-    pub fn get_properties<'a>(
-        &self,
-        definitions: &'a VoxelTypeDefinitions,
-        coord: Coordinate,
-    ) -> Result<&'a VoxelProperties, VoxelIndexError> {
-        let voxel = self.get_voxel(coord)?;
-
-        definitions
-            .get_properties_of(voxel.get_base())
-            .ok_or(VoxelIndexError { coordinate: coord })
-    }
-
     pub fn get_voxel(&self, coord: Coordinate) -> Result<VoxelRef, VoxelIndexError> {
         let internal_coord = to_internal(coord, self.zero_coordinate, 16, 16)
             .ok_or(VoxelIndexError { coordinate: coord })?;
@@ -182,9 +162,9 @@ impl Chunk16 {
     pub fn get_voxel_internal(&self, coord: ICoordinate) -> VoxelRef {
         let id = match &self.grid {
             Chunk16Grid::B32(grid) => {
-                let either = &grid[coord.x][coord.y][coord.z];
+                let either = grid[coord.x][coord.y][coord.z];
                 match either {
-                    ChunkB32Entry::Direct(block) => return VoxelRef::Simple(&block),
+                    ChunkB32Entry::Direct(block) => return VoxelRef::Inferred(block),
                     ChunkB32Entry::Mapped(idx) => idx.to_owned(),
                 }
             },
@@ -205,20 +185,21 @@ impl Chunk16 {
             },
         };
 
-        self.get_palette(id).as_voxel_ref()
+        return VoxelRef::Real(self.get_from_palette(id));
     }
 
     pub fn set_voxel_internal_base(&mut self, coord: ICoordinate, voxel: Voxel) {
-        if let Chunk16Grid::B32(grid) = &mut self.grid {
-            match voxel {
-                Voxel::Simple(voxel) => {
-                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::Direct(voxel)
-                },
-                Voxel::Advanced(_) => {
-                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::Mapped(self.add_palette(voxel))
-                },
+        if let Chunk16Grid::B32(_) = self.grid {
+            let chunk_b32_entry = if voxel.is_simple() {
+                ChunkB32Entry::Direct(voxel.get_block_id())
+            } else {
+                ChunkB32Entry::Mapped(self.add_palette(voxel))
+            };
+
+            if let Chunk16Grid::B32(grid) = &mut self.grid {
+                grid[coord.x][coord.y][coord.z] = chunk_b32_entry;
             }
-            todo!("check if palette may be removed");
+            todo!("check if palette may be removed (call `self.downgrade()`)");
             return;
         }
 
@@ -254,10 +235,10 @@ impl Chunk16 {
         };
     }
 
-    fn get_palette(&self, id: u16) -> &Voxel {
-        for ele in self.palette {
+    fn get_from_palette(&self, id: u16) -> &Voxel {
+        for ele in &self.palette {
             if ele.id == id {
-                return &ele.element;
+                return &ele.block_type;
             }
         }
 
@@ -267,7 +248,7 @@ impl Chunk16 {
     fn add_palette(&mut self, voxel: Voxel) -> u16 {
         // first see if it is already in here
         for ele in &mut self.palette {
-            if ele.element == voxel {
+            if ele.block_type == voxel {
                 ele.num_elements += 1;
                 return ele.id;
             }
@@ -282,7 +263,7 @@ impl Chunk16 {
                     BlockMapping {
                         id: idx as u16,
                         num_elements: 1,
-                        element: voxel,
+                        block_type: voxel,
                     },
                 );
 
@@ -295,7 +276,7 @@ impl Chunk16 {
         self.palette.push(BlockMapping {
             id: new_id,
             num_elements: 1,
-            element: voxel,
+            block_type: voxel,
         });
         new_id
     }
@@ -306,6 +287,25 @@ impl Chunk16 {
             Chunk16Grid::B8(_) => (1 << 8) - 1,
             Chunk16Grid::B4(_) => (1 << 4) - 1,
             Chunk16Grid::B2(_) => (1 << 2) - 1,
+        }
+    }
+
+    fn min_num_palettes(&self) -> usize {
+        // we allow a bigger representation, even if the smaller rep has this number of empty spots
+        // to prevent us from converting chunks all the time
+        const PALETTE_HYSTERESIS_VALUE: usize = 1;
+
+        let max_of_downgrade = match self.grid {
+            Chunk16Grid::B32(_) => (1 << 8) - 1,
+            Chunk16Grid::B8(_) => (1 << 4) - 1,
+            Chunk16Grid::B4(_) => (1 << 2) - 1,
+            Chunk16Grid::B2(_) => 0,
+        };
+
+        if max_of_downgrade <= PALETTE_HYSTERESIS_VALUE {
+            return 0;
+        } else {
+            return max_of_downgrade - PALETTE_HYSTERESIS_VALUE;
         }
     }
 

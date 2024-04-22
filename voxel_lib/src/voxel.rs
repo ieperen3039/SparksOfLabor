@@ -1,28 +1,43 @@
-
+use minecraft_protocol::{
+    ids::blocks::Block,
+    nbt::{self, NbtTag},
+};
 use serde::{Deserialize, Serialize};
 
-use crate::{advanced_voxel::AdvancedVoxel,  block::BaseVoxel} ;
-
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
-pub enum Voxel {
-    // bitfield of type + variant + rotation
-    Simple(BaseVoxel),
-    // reference to heap-allocated voxel definition
-    Advanced(AdvancedVoxel),
+pub struct Voxel {
+    block_id: u32,
+    nbt: Vec<u8>,
 }
 
-// not a reference to 1 of 2 types, but 1 of 2 references to a type
-// this prevents needing to copy a loose BaseVoxel or AdvancedVoxel just to create a &Voxel
-pub enum VoxelRef<'a> {
-    Simple(&'a BaseVoxel),
-    Advanced(&'a AdvancedVoxel),
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum VoxelRef<'a>
+{
+    Real(&'a Voxel),
+    Inferred(u32)
 }
 
 impl Voxel {
-    pub fn as_voxel_ref<'a>(&'a self) -> VoxelRef<'a> {
-        match self {
-            Voxel::Simple(v) => VoxelRef::Simple(v),
-            Voxel::Advanced(v) => VoxelRef::Advanced(v),
+    pub fn is_simple(&self) -> bool {
+        self.nbt.is_empty()
+    }
+
+    pub fn get_block(&self) -> Block {
+        Block::from_id(self.block_id).expect("Corrupted voxel")
+    }
+    
+    pub fn get_block_id(&self) -> u32 {
+        self.block_id
+    }
+
+    pub fn get_nbt_data(&self) -> NbtTag {
+        match nbt::parse_nbt(&self.nbt) {
+            Ok((result, _)) => return result,
+            Err(_) => panic!("Corrupted voxel nbt"),
         }
+    }
+    
+    pub fn from_id(block: u32) -> Voxel {
+        Voxel { block_id: block, nbt: Vec::new() }
     }
 }

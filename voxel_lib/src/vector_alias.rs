@@ -19,7 +19,7 @@ pub fn coordinate64_to_absolute(coord: Coordinate64) -> Coordinate {
     coord.mul(64)
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub enum AxisDirection {
     PosX,
     PosY,

@@ -2,8 +2,9 @@ use core::panic;
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
+use minecraft_protocol::ids::blocks::Block;
 
-use crate::{vector_alias::AxisDirection, block_types::BlockType};
+use crate::{vector_alias::AxisDirection};
 
 const BITS_BLOCK_TYPE_START: u32 = 0;
 const NUM_BITS_BLOCK_TYPE: u32 = 18; // 2^18 = 262144 types
@@ -22,7 +23,7 @@ pub struct BaseVoxel {
 }
 
 impl BaseVoxel {
-    pub fn new(block_type: BlockType, variant: u32, orientation: VoxelOrientation) -> BaseVoxel {
+    pub fn new(block_type: Block, variant: u32, orientation: VoxelOrientation) -> BaseVoxel {
         let mut voxel = BaseVoxel { byte : 0 };
         voxel.set_type(block_type);
         voxel.set_variant(variant);
@@ -30,8 +31,8 @@ impl BaseVoxel {
         return voxel;
     }
 
-    pub fn get_type(&self) -> BlockType {
-        num_traits::FromPrimitive::from_u32(
+    pub fn get_type(&self) -> Block {
+        Block::from_id(
             self.get_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE),
         )
         // TODO resiliance to corruption and manipulation
@@ -65,8 +66,8 @@ impl BaseVoxel {
         }
     }
 
-    pub fn set_type(&mut self, new_type: BlockType) {
-        self.set_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE, new_type as u32);
+    pub fn set_type(&mut self, new_type: Block) {
+        self.set_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE, new_type.id());
     }
 
     pub fn set_variant(&mut self, new_value: u32) {
@@ -131,7 +132,7 @@ impl Debug for BaseVoxel {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub struct VoxelOrientation {
     pub x_dir: AxisDirection,
     pub z_dir: AxisDirection,

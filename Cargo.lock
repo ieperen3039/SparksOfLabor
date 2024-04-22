@@ -821,6 +821,7 @@ dependencies = [
 name = "sol_voxel_lib"
 version = "0.1.0"
 dependencies = [
+ "minecraft-protocol",
  "nalgebra",
  "num-derive",
  "num-traits",

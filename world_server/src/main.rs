@@ -5,9 +5,6 @@ use sol_log_server::log::{Logger, Severity};
 use sol_network_lib::network::{NetworkError, ReplyLoop};
 use sol_world_messages::{WorldServerRep, WorldServerReq};
 
-use crate::world::World;
-mod world;
-
 extern crate zmq;
 
 fn main() {
@@ -38,7 +35,7 @@ fn main() {
         }
     };
 
-    let world = World::new();
+    // let world = World::new();
 
     logger.send_status("World server online");
 
