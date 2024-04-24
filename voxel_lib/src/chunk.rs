@@ -4,7 +4,7 @@ use minecraft_protocol::ids::blocks::Block;
 use minecraft_protocol::nbt::NbtTag;
 use serde::{Deserialize, Serialize};
 
-use crate::voxel::{Voxel, VoxelRef};
+use crate::voxel::{self, Voxel, VoxelRef};
 use crate::{
     block::BaseVoxel,
     vector_alias::{Coordinate, ICoordinate},
@@ -32,9 +32,15 @@ struct BlockMapping {
 }
 
 #[derive(Serialize, Deserialize)]
+struct Palette 
+{
+    mapping: Vec<BlockMapping>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Chunk16 {
     grid: Chunk16Grid,
-    palette: Vec<BlockMapping>,
+    palette: Palette,
     zero_coordinate: Coordinate,
 }
 
@@ -185,100 +191,73 @@ impl Chunk16 {
             },
         };
 
-        return VoxelRef::Real(self.get_from_palette(id));
+        return VoxelRef::Real(&self.palette.get(id).block_type);
     }
 
     pub fn set_voxel_internal_base(&mut self, coord: ICoordinate, voxel: Voxel) {
-        if let Chunk16Grid::B32(_) = self.grid {
-            let chunk_b32_entry = if voxel.is_simple() {
-                ChunkB32Entry::Direct(voxel.get_block_id())
-            } else {
-                ChunkB32Entry::Mapped(self.add_palette(voxel))
-            };
+        let voxel_block_id = voxel.get_block_id();
+        let voxel_is_simple = voxel.is_simple();
 
-            if let Chunk16Grid::B32(grid) = &mut self.grid {
-                grid[coord.x][coord.y][coord.z] = chunk_b32_entry;
-            }
-            todo!("check if palette may be removed (call `self.downgrade()`)");
-            return;
-        }
-
-        let new_id = self.add_palette(voxel) as u8;
+        let new_id = self.palette.add(voxel);
         if self.palette.len() > self.max_num_palettes() {
             self.upgrade();
         }
 
-        match &mut self.grid {
-            Chunk16Grid::B8(grid) => grid[coord.x][coord.y][coord.z] = new_id,
+        let old_id = match &mut self.grid {
+            Chunk16Grid::B8(grid) => {
+                let old_id = grid[coord.x][coord.y][coord.z];
+                grid[coord.x][coord.y][coord.z] = new_id as u8;
+                old_id as u16
+            },
             Chunk16Grid::B4(grid) => {
                 let byte_ref = &mut grid[coord.x][coord.y][coord.z / 2];
-                let id_4bit = new_id & 0b1111;
-
+                let old_id: u8;
+                let id_4bit = new_id as u8 & 0b1111;
+ 
                 if coord.z % 2 == 0 {
+                    old_id = *byte_ref & 0b00001111;
                     *byte_ref &= 0b11110000;
                     *byte_ref |= id_4bit;
                 } else {
+                    old_id = (*byte_ref & 0b11110000) >> 4;
                     *byte_ref &= 0b00001111;
                     *byte_ref |= id_4bit << 4;
                 }
+
+                old_id as u16
             },
             Chunk16Grid::B2(grid) => {
                 let byte_ref = &mut grid[coord.x][coord.y][coord.z / 4];
                 let index_in_byte = coord.z % 4;
                 let num_bit_shifts = index_in_byte * 2;
-                let id_2bit = new_id & 0b11;
+                let id_2bit = new_id as u8 & 0b11;
+
+                let old_id = (*byte_ref & (0b11 << num_bit_shifts)) >> num_bit_shifts;
 
                 *byte_ref &= !(0b11 << num_bit_shifts);
                 *byte_ref |= id_2bit << num_bit_shifts;
+
+                old_id as u16
             },
-            Chunk16Grid::B32(_) => panic!("Chunk16Grid::B32 should have been handled separately"),
+            Chunk16Grid::B32(grid) => {
+                let old_id = match grid[coord.x][coord.y][coord.z] {
+                    ChunkB32Entry::Mapped(old_value) => old_value,
+                    ChunkB32Entry::Direct(block_id) => self.palette.find(block_id),
+                };
+
+                if voxel_is_simple {
+                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::Direct(voxel_block_id);
+                } else {
+                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::Mapped(new_id);
+                }
+
+                // TODO calculate if downgrade is necessary
+
+                old_id
+            },
         };
-    }
 
-    fn get_from_palette(&self, id: u16) -> &Voxel {
-        for ele in &self.palette {
-            if ele.id == id {
-                return &ele.block_type;
-            }
-        }
-
-        unreachable!("Palette may never be empty")
-    }
-
-    fn add_palette(&mut self, voxel: Voxel) -> u16 {
-        // first see if it is already in here
-        for ele in &mut self.palette {
-            if ele.block_type == voxel {
-                ele.num_elements += 1;
-                return ele.id;
-            }
-        }
-
-        // otherwise, find the _last_ gap in the indices; we will use this index
-        // (we find the last, not the first, because insertion is cheaper this way)
-        for idx in (0..self.palette.len()).rev() {
-            if self.palette[idx].id as usize != idx {
-                self.palette.insert(
-                    idx,
-                    BlockMapping {
-                        id: idx as u16,
-                        num_elements: 1,
-                        block_type: voxel,
-                    },
-                );
-
-                return idx as u16;
-            }
-        }
-
-        // no gap in the indices; append
-        let new_id = self.palette.len() as u16;
-        self.palette.push(BlockMapping {
-            id: new_id,
-            num_elements: 1,
-            block_type: voxel,
-        });
-        new_id
+        self.palette.remove(old_id);
     }
 
     fn max_num_palettes(&self) -> usize {
@@ -315,5 +294,78 @@ impl Chunk16 {
 
     fn downgrade(&self) {
         todo!()
+    }
+}
+
+impl Palette {
+    fn add(&mut self, voxel: Voxel) -> u16 {
+        // first see if it is already in here
+        for ele in &mut self.mapping {
+            if ele.block_type == voxel {
+                ele.num_elements += 1;
+                return ele.id;
+            }
+        }
+
+        // otherwise, find the _last_ gap in the indices; we will use this index
+        // (we find the last, not the first, because insertion is cheaper this way)
+        for idx in (0..self.mapping.len()).rev() {
+            if self.mapping[idx].id as usize != idx {
+                self.mapping.insert(
+                    idx,
+                    BlockMapping {
+                        id: idx as u16,
+                        num_elements: 1,
+                        block_type: voxel,
+                    },
+                );
+
+                return idx as u16;
+            }
+        }
+
+        // no gap in the indices; append
+        let new_id = self.mapping.len() as u16;
+        self.mapping.push(BlockMapping {
+            id: new_id,
+            num_elements: 1,
+            block_type: voxel,
+        });
+
+        return new_id;
+    }
+
+    fn remove(&mut self, id: u16) {
+        let index = self
+            .mapping
+            .iter()
+            .position(|ele| ele.id == id)
+            .expect("remove_palette: Id does not exit");
+        self.mapping[index].num_elements -= 1;
+        self.mapping.remove(index);
+    }
+
+    fn get(&self, id: u16) -> &BlockMapping {
+        for ele in &self.mapping {
+            if ele.id == id {
+                return &ele;
+            }
+        }
+
+        unreachable!("Id not found")
+    }
+
+    fn find(&self, block_id: u32) -> u16 {
+        for ele in &self.mapping {
+            if ele.block_type.get_block_id() == block_id {
+                return ele.id;
+            }
+        }
+
+        unreachable!("Id not found")
+    }
+    
+    fn len(&self) -> usize {
+        self.mapping.len()
     }
 }
