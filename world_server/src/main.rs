@@ -39,7 +39,7 @@ fn main() {
 
     logger.send_status("World server online");
 
-    let stop_reason = reply_loop.start_listen();
+    let stop_reason = reply_loop.listen_until_stop();
 
     logger.send_status("World server offline");
 

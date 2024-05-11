@@ -10,7 +10,6 @@ pub const CONNECTION_NAME_WORLD_SERVER_REQ: &str = "WorldServerRequest";
 #[derive(Serialize, Deserialize)]
 pub enum WorldServerReq {
     Ping(String),
-    ContentChunk4(Coordinate),
     ContentChunk16(Coordinate),
     ContentChunk64(Coordinate),
     SetVoxel(Coordinate, Voxel),

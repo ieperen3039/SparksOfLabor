@@ -31,7 +31,7 @@ where
         })
     }
 
-    pub fn start_listen(&self) -> Result<(), NetworkError> {
+    pub fn listen_until_stop(&self) -> Result<(), NetworkError> {
         self.socket
             .bind(self.endpoint.as_str())
             .map_err(|err| NetworkError::ZmqError(err))?;
