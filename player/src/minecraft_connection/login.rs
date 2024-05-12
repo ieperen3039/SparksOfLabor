@@ -14,8 +14,37 @@ use minecraft_protocol::{
         self as mc_packets, play_clientbound::ClientboundPacket as PlayClientbound,
         play_serverbound::ServerboundPacket as PlayServerbound, Array,
     },
+    MinecraftPacketPart,
 };
-use sol_voxel_lib::world::World;
+use nalgebra::{Quaternion, UnitQuaternion};
+use sol_voxel_lib::{
+    vector_alias::{Direction, Position, Rotation},
+    world::World,
+};
+
+enum CommunicationError {
+    UnexpectedPackage { expected: String, received: String },
+    SerialisationError(String),
+    IoError(io::Error),
+}
+
+impl CommunicationError {
+    pub fn wrong_package<'a, PacketType>(expected: &str, received: PacketType) -> CommunicationError
+    where
+        PacketType: MinecraftPacketPart<'a> + std::fmt::Debug,
+    {
+        Self::UnexpectedPackage {
+            expected: String::from(expected),
+            received: format!("{received:?}"),
+        }
+    }
+}
+
+impl From<io::Error> for CommunicationError {
+    fn from(value: io::Error) -> Self {
+        Self::IoError(value)
+    }
+}
 
 pub struct LoggedInPlayerInfo {
     addr: SocketAddr,
@@ -40,8 +69,7 @@ pub fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> io::Result<
         unreachable!()
     };
 
-    loop 
-    {
+    loop {
         match next_state {
             mc_packets::ConnectionState::Login => {
                 let player_info = login(&mut stream, addr)?;
@@ -51,28 +79,31 @@ pub fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> io::Result<
                 // status(&mut stream);
                 todo!("Handle ConnectionState::Status")
             },
-            _ => return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Unexpected next state: {next_state:?}",
-            )),
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Unexpected next state: {next_state:?}",
+                ))
+            },
         };
     }
 }
 
-pub fn login(stream: &mut TcpStream, addr: SocketAddr) -> Result<LoggedInPlayerInfo, io::Error> {
+pub fn login(
+    stream: &mut TcpStream,
+    addr: SocketAddr,
+) -> Result<LoggedInPlayerInfo, CommunicationError> {
     // Receive login start
     let mut buffer = Vec::new();
     let packet: mc_packets::login::ServerboundPacket =
         network::receive_packet(stream, &mut buffer)?;
+
     let mc_packets::login::ServerboundPacket::LoginStart {
         username,
         player_uuid,
     } = packet
     else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Expected LoginStart packet, got: {packet:?}"),
-        ));
+        return Err(CommunicationError::wrong_package("LoginStart", packet));
     };
     println!("LoginStart: {username}");
 
@@ -95,9 +126,9 @@ pub fn login(stream: &mut TcpStream, addr: SocketAddr) -> Result<LoggedInPlayerI
     let packet: mc_packets::login::ServerboundPacket =
         network::receive_packet(stream, &mut buffer)?;
     let mc_packets::login::ServerboundPacket::LoginAcknowledged = packet else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Expected LoginAcknowledged packet, got: {packet:?}"),
+        return Err(CommunicationError::wrong_package(
+            "LoginAcknowledged",
+            packet,
         ));
     };
     println!("LoginAcknowledged received");
@@ -135,9 +166,9 @@ pub fn initialize_client(
     stream: &mut TcpStream,
     logged_in_player_info: LoggedInPlayerInfo,
     world: &mut World,
-) -> io::Result<PlayerInfo> {
+) -> Result<PlayerInfo, CommunicationError> {
     // Receive client informations
-    let buffer = Vec::new();
+    let mut buffer = Vec::new();
     let packet: mc_packets::config::ServerboundPacket =
         network::receive_packet(stream, &mut buffer)?;
     let mc_packets::config::ServerboundPacket::ClientInformations {
@@ -151,9 +182,9 @@ pub fn initialize_client(
         allow_server_listing,
     } = packet
     else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Expected LoginStart packet, got: {packet:?}"),
+        return Err(CommunicationError::wrong_package(
+            "ClientInformations",
+            packet,
         ));
     };
     println!("ClientInformation received");
@@ -197,9 +228,9 @@ pub fn initialize_client(
     let packet: mc_packets::config::ServerboundPacket =
         network::receive_packet(stream, &mut buffer)?;
     let mc_packets::config::ServerboundPacket::FinishConfiguration = packet else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Expected FinishConfiguration packet, got: {packet:?}"),
+        return Err(CommunicationError::wrong_package(
+            "FinishConfiguration",
+            packet,
         ));
     };
     println!("FinishConfiguration received");
@@ -295,16 +326,20 @@ pub fn initialize_client(
     println!("UnlockRecipes sent");
 
     // Spawn player
-    let player_position = PlayClientbound::PlayerPositionAndLook {
-        x: 0.0,
-        y: 60.0,
-        z: 0.0,
-        yaw: 0.0,
-        pitch: 0.0,
-        flags: 0,
+    let player_position = Position::new(0.0, 60.0, 0.0);
+    let player_look_dir = Rotation::identity();
+
+    let (player_yaw, player_pitch, player_roll) = player_look_dir.euler_angles();
+    let player_position_packet = PlayClientbound::PlayerPositionAndLook {
+        x: player_position.x as f64,
+        y: player_position.y as f64,
+        z: player_position.z as f64,
+        yaw: player_yaw,
+        pitch: player_pitch,
+        flags: 0x00,
         teleport_id: mc_packets::VarInt(1),
     };
-    network::send_packet(stream, player_position);
+    network::send_packet(stream, player_position_packet);
     println!("PlayerPositionAndLook sent");
 
     // Send server metadata
@@ -318,7 +353,7 @@ pub fn initialize_client(
 
     // Spawn message
     let spawn_message = PlayClientbound::SystemChatMessage {
-        content: "{\"text\":\"Hello world\"}",
+        content: "{\"text\":\"Welcome to Sparks of Labor!\"}",
         overlay: false,
     };
     network::send_packet(stream, spawn_message);
@@ -472,58 +507,28 @@ pub fn initialize_client(
     network::send_packet(stream, chunk_data);
     println!("ChunkBatchStart sent");
 
-    let change_receiver = world.add_loader(logged_in_player_info.uuid);
-    let mut loaded_chunks = HashSet::new();
-    for cx in -3..=3 {
-        for cz in -3..=3 {
-            loaded_chunks.insert(ChunkColumnPosition { cx, cz });
-        }
+    let (heightmaps, chunks) = world.get_area(player_position);
+    for (cx, cz, column) in chunks {
+        let serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(column)
+            .map_err(|e| CommunicationError::SerialisationError(String::from(e)))?;
+        let chunk_data = PlayClientbound::ChunkData {
+            value: mc_components::chunk::ChunkData {
+                chunk_x: cx,
+                chunk_z: cz,
+                heightmaps: NbtTag::Compound(heightmaps),
+                data: Array::from(serialized),
+                block_entities: Array::default(),
+                sky_light_mask: Array::default(),
+                block_light_mask: Array::default(),
+                empty_sky_light_mask: Array::default(),
+                empty_block_light_mask: Array::default(),
+                sky_light: Array::default(),
+                block_light: Array::default(),
+            },
+        };
+        network::send_packet(stream, chunk_data);
     }
-    world.update_loaded_chunks(logged_in_player_info.uuid, loaded_chunks);
 
-    let mut heightmaps = HashMap::new();
-    heightmaps.insert(
-        String::from("MOTION_BLOCKING"),
-        NbtTag::LongArray(vec![0; 37]),
-    );
-    let heightmaps = NbtTag::Compound(heightmaps);
-
-    for cx in -3..=3 {
-        for cz in -3..=3 {
-            let mut column = Vec::new();
-            for cy in -4..20 {
-                let chunk = world
-                    .get_network_chunk(ChunkPosition { cx, cy, cz })
-                    .unwrap_or_else(|| {
-                        println!("Chunk not loaded: {cx} {cy} {cz}");
-                        mc_components::chunk::Chunk {
-                            // TODO hard error
-                            block_count: 0,
-                            blocks: mc_components::chunk::PalettedData::Single { value: 0 },
-                            biomes: mc_components::chunk::PalettedData::Single { value: 4 },
-                        }
-                    });
-                column.push(chunk);
-            }
-            let serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(column).unwrap();
-            let chunk_data = PlayClientbound::ChunkData {
-                value: mc_components::chunk::ChunkData {
-                    chunk_x: cx,
-                    chunk_z: cz,
-                    heightmaps: heightmaps.clone(),
-                    data: Array::from(serialized.clone()),
-                    block_entities: Array::default(),
-                    sky_light_mask: Array::default(),
-                    block_light_mask: Array::default(),
-                    empty_sky_light_mask: Array::default(),
-                    empty_block_light_mask: Array::default(),
-                    sky_light: Array::default(),
-                    block_light: Array::default(),
-                },
-            };
-            network::send_packet(stream, chunk_data);
-        }
-    }
     println!("ChunkData sent");
 
     // Chunk batch end
@@ -537,27 +542,24 @@ pub fn initialize_client(
     let mut buffer = Vec::new();
     let packet: PlayServerbound = network::receive_packet(stream, &mut buffer)?;
     let PlayServerbound::ChunkBatchReceived { chunks_per_tick } = packet else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Expected ChunkBatchReceived packet, got: {packet:?}"),
+        return Err(CommunicationError::wrong_package(
+            "ChunkBatchReceived",
+            packet,
         ));
     };
     println!("ChunkBatchReceived received");
 
-    Ok((
-        PlayerInfo {
-            addr: logged_in_player_info.addr,
-            username: logged_in_player_info.username,
-            uuid: logged_in_player_info.uuid,
-            locale: locale.to_owned(),
-            render_distance: render_distance.try_into().unwrap_or(5),
-            chat_mode,
-            chat_colors,
-            displayed_skin_parts,
-            main_hand,
-            enable_text_filtering,
-            allow_server_listing,
-        },
-        change_receiver,
-    ))
+    Ok(PlayerInfo {
+        addr: logged_in_player_info.addr,
+        username: logged_in_player_info.username,
+        uuid: logged_in_player_info.uuid,
+        locale: locale.to_owned(),
+        render_distance: render_distance.try_into().unwrap_or(5),
+        chat_mode,
+        chat_colors,
+        displayed_skin_parts,
+        main_hand,
+        enable_text_filtering,
+        allow_server_listing,
+    })
 }

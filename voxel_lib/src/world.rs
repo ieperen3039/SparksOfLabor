@@ -16,4 +16,8 @@ impl World {
     pub fn get_chunk<'s>(&'s self, coord : Coordinate64) -> Option<&'s Chunk64> {
         self.chunks.get(&(coord.x, coord.y, coord.z)).map(|b| b.as_ref())
     }
+    
+    pub fn get_area(&self, player_position: nalgebra::OPoint<f32, nalgebra::Const<3>>) -> (HashMap<String, minecraft_protocol::nbt::NbtTag>, ChunkColumn) {
+        todo!()
+    }
 }

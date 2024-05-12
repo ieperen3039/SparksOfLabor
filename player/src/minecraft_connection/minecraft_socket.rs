@@ -19,7 +19,7 @@ impl Connection {
         
         let player_info = login::initialize_client(&mut stream, player_info, world)?;
         let uuid = player_info.uuid;
-        let eid = world.spawn_player(world, stream, player_info);
+        let eid = world.spawn_player(stream, player_info);
 
         return Ok(Connection{});
     }

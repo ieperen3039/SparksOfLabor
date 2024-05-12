@@ -55,6 +55,7 @@ enum Chunk16Grid {
     B4(Box<[[[u8; 8]; 16]; 16]>),
     // 2^2 = 4 different element types
     B2(Box<[[[u8; 4]; 16]; 16]>),
+    B1
 }
 
 fn to_internal(
@@ -189,6 +190,7 @@ impl Chunk16 {
                 let num_bit_shifts = index_in_byte * 2;
                 (byte & (0b11 << num_bit_shifts)) >> num_bit_shifts
             },
+            Chunk16Grid::B1 => 0,
         };
 
         return VoxelRef::Real(&self.palette.get(id).block_type);
@@ -255,6 +257,7 @@ impl Chunk16 {
 
                 old_id
             },
+            Chunk16Grid::B1 => 0,
         };
 
         self.palette.remove(old_id);
@@ -266,6 +269,7 @@ impl Chunk16 {
             Chunk16Grid::B8(_) => (1 << 8) - 1,
             Chunk16Grid::B4(_) => (1 << 4) - 1,
             Chunk16Grid::B2(_) => (1 << 2) - 1,
+            Chunk16Grid::B1 => 1,
         }
     }
 
@@ -278,7 +282,8 @@ impl Chunk16 {
             Chunk16Grid::B32(_) => (1 << 8) - 1,
             Chunk16Grid::B8(_) => (1 << 4) - 1,
             Chunk16Grid::B4(_) => (1 << 2) - 1,
-            Chunk16Grid::B2(_) => 0,
+            Chunk16Grid::B2(_) => 1,
+            Chunk16Grid::B1 => 0,
         };
 
         if max_of_downgrade <= PALETTE_HYSTERESIS_VALUE {
