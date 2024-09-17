@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use minecraft_protocol::ids::blocks::Block;
 use minecraft_protocol::nbt::NbtTag;
 use serde::{Deserialize, Serialize};
@@ -55,7 +53,8 @@ enum Chunk16Grid {
     B4(Box<[[[u8; 8]; 16]; 16]>),
     // 2^2 = 4 different element types
     B2(Box<[[[u8; 4]; 16]; 16]>),
-    B1
+    // 1 element type
+    B0
 }
 
 fn to_internal(
@@ -144,8 +143,7 @@ impl Chunk64 {
                         for y in 0..16usize {
                             for z in 0..16usize {
                                 let index_vector = ICoordinate::new(x, y, z);
-
-                                let voxel = todo!();
+                                let voxel = chunk16.get_voxel_internal(index_vector);
 
                                 let coord = index_vector_16_base + index_vector;
                                 action(&coord, voxel);
@@ -190,7 +188,7 @@ impl Chunk16 {
                 let num_bit_shifts = index_in_byte * 2;
                 (byte & (0b11 << num_bit_shifts)) >> num_bit_shifts
             },
-            Chunk16Grid::B1 => 0,
+            Chunk16Grid::B0 => 0,
         };
 
         return VoxelRef::Real(&self.palette.get(id).block_type);
@@ -257,7 +255,7 @@ impl Chunk16 {
 
                 old_id
             },
-            Chunk16Grid::B1 => 0,
+            Chunk16Grid::B0 => 0,
         };
 
         self.palette.remove(old_id);
@@ -269,7 +267,7 @@ impl Chunk16 {
             Chunk16Grid::B8(_) => (1 << 8) - 1,
             Chunk16Grid::B4(_) => (1 << 4) - 1,
             Chunk16Grid::B2(_) => (1 << 2) - 1,
-            Chunk16Grid::B1 => 1,
+            Chunk16Grid::B0 => 1,
         }
     }
 
@@ -283,7 +281,7 @@ impl Chunk16 {
             Chunk16Grid::B8(_) => (1 << 4) - 1,
             Chunk16Grid::B4(_) => (1 << 2) - 1,
             Chunk16Grid::B2(_) => 1,
-            Chunk16Grid::B1 => 0,
+            Chunk16Grid::B0 => 0,
         };
 
         if max_of_downgrade <= PALETTE_HYSTERESIS_VALUE {
