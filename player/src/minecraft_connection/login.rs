@@ -22,8 +22,9 @@ use sol_voxel_lib::{
     world::World,
 };
 
-enum CommunicationError {
+pub enum CommunicationError {
     UnexpectedPackage { expected: String, received: String },
+    UnexpectedState { from: mc_packets::ConnectionState, to: mc_packets::ConnectionState },
     SerialisationError(String),
     IoError(io::Error),
 }
@@ -165,7 +166,7 @@ pub struct PlayerInfo {
 pub fn initialize_client(
     stream: &mut TcpStream,
     logged_in_player_info: LoggedInPlayerInfo,
-    world: &mut World,
+    world: World,
 ) -> Result<PlayerInfo, CommunicationError> {
     // Receive client informations
     let mut buffer = Vec::new();
@@ -508,8 +509,10 @@ pub fn initialize_client(
     println!("ChunkBatchStart sent");
 
     let (heightmaps, chunks) = world.get_area(player_position);
-    for (cx, cz, column) in chunks {
-        let serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(column)
+    for chunk_column in chunks {
+
+        let chunk_sections: Vec<mc_components::chunk::Chunk> = chunk_column.chunk_sections;
+        let serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(chunk_sections)
             .map_err(|e| CommunicationError::SerialisationError(String::from(e)))?;
         let chunk_data = PlayClientbound::ChunkData {
             value: mc_components::chunk::ChunkData {

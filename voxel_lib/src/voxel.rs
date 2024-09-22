@@ -11,10 +11,9 @@ pub struct Voxel {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub enum VoxelRef<'a>
-{
+pub enum VoxelRef<'a> {
     Real(&'a Voxel),
-    Inferred(u32)
+    Inferred(u32),
 }
 
 impl Voxel {
@@ -25,19 +24,26 @@ impl Voxel {
     pub fn get_block(&self) -> Block {
         Block::from_id(self.block_id).expect("Corrupted voxel")
     }
-    
+
     pub fn get_block_id(&self) -> u32 {
         self.block_id
     }
 
     pub fn get_nbt_data(&self) -> NbtTag {
+        if self.nbt.is_empty() {
+            return NbtTag::Null;
+        }
+        
         match nbt::parse_nbt(&self.nbt) {
             Ok((result, _)) => return result,
             Err(_) => panic!("Corrupted voxel nbt"),
         }
     }
-    
+
     pub fn from_id(block: u32) -> Voxel {
-        Voxel { block_id: block, nbt: Vec::new() }
+        Voxel {
+            block_id: block,
+            nbt: Vec::new(),
+        }
     }
 }

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub type ICoordinate = Vector3<usize>;
 pub type Coordinate = Vector3<i32>;
+pub type Coordinate16 = Vector3<i32>;
 pub type Coordinate64 = Vector3<i32>;
 
 pub type Position = Point3<f32>;
@@ -13,6 +14,10 @@ pub type Rotation = UnitQuaternion<f32>;
 
 pub fn coordinate64_to_absolute(coord: Coordinate64) -> Coordinate {
     coord.mul(64)
+}
+
+pub fn coordinate16_to_absolute(coord: Coordinate16) -> Coordinate {
+    coord.mul(16)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
