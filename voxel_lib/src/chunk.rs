@@ -77,6 +77,7 @@ struct Palette {
 
 #[derive(Serialize, Deserialize)]
 pub struct Chunk16 {
+    // NOTE: [y][z][x] where y is height
     grid: Chunk16Grid,
     palette: Palette,
     biomes: [[[u8; 4]; 4]; 4],
@@ -175,14 +176,14 @@ impl Chunk64 {
 
     pub fn for_each<Action: FnMut(&ICoordinate, VoxelRef)>(&self, mut action: Action) {
         // I regret nothing
-        for x16 in 0..4usize {
-            for y16 in 0..4usize {
-                for z16 in 0..4usize {
-                    let chunk16 = &self.voxels[x16][y16][z16];
+        for y16 in 0..4usize {
+            for z16 in 0..4usize {
+                for x16 in 0..4usize {
+                    let chunk16 = &self.voxels[y16][z16][x16];
                     let index_vector_16_base = ICoordinate::new(x16, y16, z16) * 16;
-                    for x in 0..16usize {
-                        for y in 0..16usize {
-                            for z in 0..16usize {
+                    for y in 0..16usize {
+                        for z in 0..16usize {
+                            for x in 0..16usize {
                                 let index_vector = ICoordinate::new(x, y, z);
                                 let voxel = chunk16.get_voxel_internal(index_vector);
 
@@ -223,16 +224,16 @@ impl Chunk16 {
     pub fn get_voxel_internal(&self, coord: ICoordinate) -> VoxelRef {
         let id = match &self.grid {
             Chunk16Grid::B32(grid) => {
-                let entry = grid[coord.x][coord.y][coord.z];
+                let entry = grid[coord.y][coord.z][coord.x];
                 if entry.is_direct() {
                     return VoxelRef::Inferred(entry.as_direct());
                 };
                 assert!(entry.is_mapped());
                 entry.as_mapped()
             },
-            Chunk16Grid::B8(grid) => grid[coord.x][coord.y][coord.z] as u16,
+            Chunk16Grid::B8(grid) => grid[coord.y][coord.z][coord.x] as u16,
             Chunk16Grid::B4(grid) => {
-                let byte = grid[coord.x][coord.y][coord.z / 2] as u16;
+                let byte = grid[coord.y][coord.z][coord.x / 2] as u16;
                 if coord.z % 2 == 0 {
                     byte & 0b1111
                 } else {
@@ -240,7 +241,7 @@ impl Chunk16 {
                 }
             },
             Chunk16Grid::B2(grid) => {
-                let byte = grid[coord.x][coord.y][coord.z / 4] as u16;
+                let byte = grid[coord.y][coord.z][coord.x / 4] as u16;
                 let index_in_byte = coord.z % 4;
                 let num_bit_shifts = index_in_byte * 2;
                 (byte & (0b11 << num_bit_shifts)) >> num_bit_shifts
@@ -262,12 +263,12 @@ impl Chunk16 {
 
         let old_id = match &mut self.grid {
             Chunk16Grid::B8(grid) => {
-                let old_id = grid[coord.x][coord.y][coord.z];
-                grid[coord.x][coord.y][coord.z] = new_id as u8;
+                let old_id = grid[coord.y][coord.z][coord.x];
+                grid[coord.y][coord.z][coord.x] = new_id as u8;
                 old_id as u16
             },
             Chunk16Grid::B4(grid) => {
-                let byte_ref = &mut grid[coord.x][coord.y][coord.z / 2];
+                let byte_ref = &mut grid[coord.y][coord.z][coord.x / 2];
                 let old_id: u8;
                 let id_4bit = new_id as u8 & 0b1111;
 
@@ -284,7 +285,7 @@ impl Chunk16 {
                 old_id as u16
             },
             Chunk16Grid::B2(grid) => {
-                let byte_ref = &mut grid[coord.x][coord.y][coord.z / 4];
+                let byte_ref = &mut grid[coord.y][coord.z][coord.x / 4];
                 let index_in_byte = coord.z % 4;
                 let num_bit_shifts = index_in_byte * 2;
                 let id_2bit = new_id as u8 & 0b11;
@@ -297,7 +298,7 @@ impl Chunk16 {
                 old_id as u16
             },
             Chunk16Grid::B32(grid) => {
-                let chunk_b32_entry = grid[coord.x][coord.y][coord.z];
+                let chunk_b32_entry = grid[coord.y][coord.z][coord.x];
                 let old_id = if chunk_b32_entry.is_direct() {
                     self.palette.find(chunk_b32_entry.as_direct())
                 } else {
@@ -305,9 +306,9 @@ impl Chunk16 {
                 };
 
                 if voxel_is_simple {
-                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::make_direct(voxel_block_id);
+                    grid[coord.y][coord.z][coord.x] = ChunkB32Entry::make_direct(voxel_block_id);
                 } else {
-                    grid[coord.x][coord.y][coord.z] = ChunkB32Entry::make_mapped(new_id);
+                    grid[coord.y][coord.z][coord.x] = ChunkB32Entry::make_mapped(new_id);
                 }
 
                 if self.palette.len() < self.min_num_palettes() {
@@ -352,10 +353,9 @@ impl Chunk16 {
         let mut grid = Box::new([[[0; 4]; 16]; 16]);
 
         let mut i = 0;
-        // we assume that the slice can be indexed: slice[z][y][x], where 'z' is the _height_.
-        // Minecraft however considers 'y' to be the height, thus minecraft indexes as slice[y][z][x]
-        for z in 0..16usize {
-            for y in 0..16usize {
+        // we assume that the slice can be indexed: slice[y][z][x]
+        for y in 0..16usize {
+            for z in 0..16usize {
                 for x in 0..16usize {
                     let new_id = slice[i];
 
@@ -363,7 +363,7 @@ impl Chunk16 {
                     let num_bit_shifts = index_in_byte * 2;
                     let id_2bit = new_id & 0b11;
 
-                    let byte_ref = &mut grid[x][y][z / 4];
+                    let byte_ref = &mut grid[y][z][x / 4];
                     *byte_ref &= !(0b11 << num_bit_shifts);
                     *byte_ref |= id_2bit << num_bit_shifts;
 
@@ -379,12 +379,12 @@ impl Chunk16 {
         let mut grid = Box::new([[[0; 8]; 16]; 16]);
 
         let mut i = 0;
-        for x in 0..16usize {
-            for y in 0..16usize {
-                for z in 0..16usize {
+        for y in 0..16usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
                     let new_id = slice[i];
 
-                    let byte_ref = &mut grid[x][y][z / 2];
+                    let byte_ref = &mut grid[y][z][x / 2];
                     let id_4bit = new_id & 0b1111;
 
                     if z % 2 == 0 {
@@ -407,10 +407,10 @@ impl Chunk16 {
         let mut grid = Box::new([[[0; 16]; 16]; 16]);
 
         let mut i = 0;
-        for x in 0..16usize {
-            for y in 0..16usize {
-                for z in 0..16usize {
-                    grid[x][y][z] = slice[i];
+        for y in 0..16usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    grid[y][z][x] = slice[i];
                     i += 1;
                 }
             }
@@ -423,10 +423,10 @@ impl Chunk16 {
         let mut grid = Box::new([[[ChunkB32Entry::new_empty(); 16]; 16]; 16]);
 
         let mut i = 0;
-        for x in 0..16usize {
-            for y in 0..16usize {
-                for z in 0..16usize {
-                    grid[x][y][z] = ChunkB32Entry::make_mapped(slice[i] as u16);
+        for y in 0..16usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    grid[y][z][x] = ChunkB32Entry::make_mapped(slice[i] as u16);
                     i += 1;
                 }
             }
@@ -471,17 +471,17 @@ impl Chunk16 {
             Chunk16Grid::B8(grid) => {
                 let mut new_grid = Box::new([[[ChunkB32Entry::new_empty(); 16]; 16]; 16]);
 
-                for x in 0..16usize {
-                    for y in 0..16usize {
-                        for z in 0..16usize {
-                            let id = grid[x][y][z];
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        for x in 0..16usize {
+                            let id = grid[y][z][x];
                             let block_mapping = self.palette.get(id as u16);
 
                             if block_mapping.block_type.is_simple() {
-                                new_grid[x][y][z] =
+                                new_grid[y][z][x] =
                                     ChunkB32Entry::make_direct(block_mapping.id as u32);
                             } else {
-                                new_grid[x][y][z] = ChunkB32Entry::make_mapped(id as u16);
+                                new_grid[y][z][x] = ChunkB32Entry::make_mapped(id as u16);
                             }
                         }
                     }
@@ -492,15 +492,15 @@ impl Chunk16 {
             Chunk16Grid::B4(grid) => {
                 let mut new_grid = Box::new([[[0; 16]; 16]; 16]);
 
-                for x in 0..16usize {
-                    for y in 0..16usize {
-                        for z in 0..16usize {
-                            let byte_ref: u8 = grid[x][y][z / 2];
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        for x in 0..16usize {
+                            let byte_ref: u8 = grid[y][z][x / 2];
 
                             if z % 2 == 0 {
-                                new_grid[x][y][z] = byte_ref & 0b00001111;
+                                new_grid[y][z][x] = byte_ref & 0b00001111;
                             } else {
-                                new_grid[x][y][z] = (byte_ref & 0b11110000) >> 4;
+                                new_grid[y][z][x] = (byte_ref & 0b11110000) >> 4;
                             };
                         }
                     }
@@ -511,15 +511,15 @@ impl Chunk16 {
             Chunk16Grid::B2(grid) => {
                 let mut new_grid = Box::new([[[0; 8]; 16]; 16]);
 
-                for x in 0..16usize {
-                    for y in 0..16usize {
-                        for z in 0..16usize {
-                            let old_byte: u8 = grid[x][y][z / 4];
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        for x in 0..16usize {
+                            let old_byte: u8 = grid[y][z][x / 4];
                             let index_in_byte = z % 4;
                             let num_bit_shifts = index_in_byte * 2;
                             let id = (old_byte & (0b11 << num_bit_shifts)) >> num_bit_shifts;
 
-                            let byte_ref: &mut u8 = &mut new_grid[x][y][z / 2];
+                            let byte_ref: &mut u8 = &mut new_grid[y][z][x / 2];
                             let id_4bit = id as u8 & 0b1111;
 
                             if z % 2 == 0 {
