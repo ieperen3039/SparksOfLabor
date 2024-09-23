@@ -17,6 +17,17 @@ pub enum VoxelRef<'a> {
 }
 
 impl Voxel {
+    pub fn from_id(block: u32) -> Voxel {
+        Voxel {
+            block_id: block,
+            nbt: Vec::new(),
+        }
+    }
+    
+    pub fn from_block(block: Block) -> Voxel {
+        Self::from_id(block as u32)
+    }
+
     pub fn is_simple(&self) -> bool {
         self.nbt.is_empty()
     }
@@ -40,10 +51,7 @@ impl Voxel {
         }
     }
 
-    pub fn from_id(block: u32) -> Voxel {
-        Voxel {
-            block_id: block,
-            nbt: Vec::new(),
-        }
+    pub fn is_air(&self) -> bool {
+        self.get_block().is_air_block() 
     }
 }

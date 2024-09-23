@@ -1,13 +1,9 @@
-use minecraft_protocol::ids::blocks::Block;
-use minecraft_protocol::nbt::NbtTag;
+use minecraft_protocol::ids::blocks as mc_ids;
 use serde::{Deserialize, Serialize};
 
-use crate::vector_alias::{
-    coordinate16_to_absolute, coordinate64_to_absolute, Coordinate16, Coordinate64,
-};
+use crate::vector_alias::{coordinate16_to_absolute, Coordinate16};
 use crate::voxel::{self, Voxel, VoxelRef};
 use crate::{
-    block::BaseVoxel,
     vector_alias::{Coordinate, ICoordinate},
     voxel_errors::VoxelIndexError,
 };
@@ -65,7 +61,7 @@ pub struct Chunk64 {
 #[derive(Serialize, Deserialize)]
 struct BlockMapping {
     // 2^16 = 65536 different element types, and there are only 4096 voxels per chunk.
-    id: u16,
+    idx: u16,
     num_elements: u16,
     block_type: Voxel,
 }
@@ -82,6 +78,7 @@ pub struct Chunk16 {
     palette: Palette,
     biomes: [[[u8; 4]; 4]; 4],
     zero_coordinate: Coordinate,
+    num_non_air_blocks: u16,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -152,6 +149,14 @@ fn from_internal(coord: ICoordinate, zero_coord: Coordinate, internal_step: i32)
     zero_coord + (Coordinate::new(coord.x as i32, coord.y as i32, coord.z as i32) * internal_step)
 }
 
+impl Palette {
+    pub fn new() -> Palette {
+        Palette {
+            mapping: Vec::new(),
+        }
+    }
+}
+
 impl Chunk64 {
     pub fn get_chunk16<'s>(&'s self, coord: Coordinate) -> Result<&'s Chunk16, VoxelIndexError> {
         let internal_coord = to_internal(coord, self.zero_coordinate, 16, 4)
@@ -199,18 +204,22 @@ impl Chunk64 {
 }
 
 impl Chunk16 {
-    pub fn new(location: Coordinate64, fill_value: Voxel) -> Chunk16 {
+    pub fn new(location: Coordinate16, fill_value: mc_ids::Block) -> Chunk16 {
+        let fill_voxel = Voxel::from_block(fill_value);
+        let is_air = fill_voxel.is_air();
+
         Chunk16 {
             grid: Chunk16Grid::B0,
             palette: Palette {
                 mapping: vec![BlockMapping {
-                    id: 0,
+                    idx: 0,
                     num_elements: 1,
-                    block_type: fill_value,
+                    block_type: fill_voxel,
                 }],
             },
             biomes: Default::default(),
-            zero_coordinate: coordinate64_to_absolute(location),
+            zero_coordinate: coordinate16_to_absolute(location),
+            num_non_air_blocks: if is_air { 0 } else { 16 * 16 * 16 },
         }
     }
 
@@ -255,6 +264,10 @@ impl Chunk16 {
     pub fn set_voxel_internal(&mut self, coord: ICoordinate, voxel: Voxel) {
         let voxel_block_id = voxel.get_block_id();
         let voxel_is_simple = voxel.is_simple();
+
+        if !voxel.is_air() {
+            self.num_non_air_blocks += 1;
+        }
 
         let new_id = self.palette.add(voxel);
         if self.palette.len() > self.max_num_palettes() {
@@ -320,25 +333,31 @@ impl Chunk16 {
             Chunk16Grid::B0 => 0,
         };
 
-        self.palette.remove(old_id);
+        let old_block_id = self.palette.remove(old_id);
+        
+        let voxel_was_air = mc_ids::Block::from_id(old_block_id)
+            .expect("invalid id")
+            .is_air_block();
+
+        if !voxel_was_air {
+            // we removed a non-air block
+            self.num_non_air_blocks -= 1;
+        }
     }
 
-    pub fn from_raw(grid: &[u8], palette: &[u32], position: Coordinate16) -> Chunk16 {
-        let mut sol_palette = Palette {
-            mapping: Vec::new(),
-        };
+    pub fn from_raw_palette(grid: &[u8], palette: &[u32], position: Coordinate16) -> Chunk16 {
+        let mut sol_palette = Palette::new();
         for id in palette {
             sol_palette.add(Voxel::from_id(*id));
         }
 
-        let grid = if palette.len() <= 2 {
+        let grid = if palette.len() < (1 << 2) {
             Chunk16::from_slice_b2(grid)
-        } else if palette.len() <= 4 {
+        } else if palette.len() < (1 << 4) {
             Chunk16::from_slice_b4(grid)
-        } else if palette.len() <= 8 {
-            Chunk16::from_slice_b8(grid)
         } else {
-            Chunk16::from_slice_b32(grid)
+            // it cannot be worse than 8-bit, because the input grid is 8-bit
+            Chunk16::from_slice_b8(grid)
         };
 
         return Chunk16 {
@@ -346,6 +365,7 @@ impl Chunk16 {
             palette: sol_palette,
             biomes: [[[0; 4]; 4]; 4],
             zero_coordinate: coordinate16_to_absolute(position),
+            num_non_air_blocks: 0,
         };
     }
 
@@ -435,6 +455,77 @@ impl Chunk16 {
         return Chunk16Grid::B32(grid);
     }
 
+    pub fn from_direct(slice: &[u32], position: Coordinate16) -> Chunk16 {
+        // we assume that this will require a 32-bit mapping, because otherwise it would be an indirect map
+        let mut grid = Box::new([[[ChunkB32Entry::new_empty(); 16]; 16]; 16]);
+
+        let mut i = 0;
+        for y in 0..16usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    grid[y][z][x] = ChunkB32Entry::make_direct(slice[i]);
+                    i += 1;
+                }
+            }
+        }
+
+        return Chunk16 {
+            grid: Chunk16Grid::B32(grid),
+            palette: Palette::new(),
+            biomes: [[[0; 4]; 4]; 4],
+            zero_coordinate: coordinate16_to_absolute(position),
+            num_non_air_blocks: 0,
+        };
+    }
+
+    pub fn as_direct(&self) -> Option<Vec<u32>> {
+        match &self.grid {
+            Chunk16Grid::B32(grid) => {
+                let mut result = Vec::new();
+                result.reserve(16 * 16 * 16);
+
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        for x in 0..16usize {
+                            let elt = grid[y][z][x];
+
+                            if elt.is_mapped() {
+                                let id =
+                                    self.palette.get(elt.as_mapped()).block_type.get_block_id();
+                                result.push(id);
+                            } else {
+                                result.push(elt.as_direct());
+                            }
+                        }
+                    }
+                }
+
+                return Some(result);
+            },
+            _ => return None,
+        }
+    }
+    
+    pub fn as_single(&self) -> Option<u32> {
+        match self.grid {
+            Chunk16Grid::B0 => {
+                let voxel = &self.palette.get(0).block_type;
+                return Some(voxel.get_block_id())
+            },
+            _ => return None,
+        }
+    }
+
+    pub fn get_grid_element_byte_size(&self) -> usize {
+        match self.grid {
+            Chunk16Grid::B32(_) => 32,
+            Chunk16Grid::B8(_) => 8,
+            Chunk16Grid::B4(_) => 4,
+            Chunk16Grid::B2(_) => 2,
+            Chunk16Grid::B0 => 0,
+        }
+    }
+
     fn max_num_palettes(&self) -> usize {
         match self.grid {
             Chunk16Grid::B32(_) => u32::MAX as usize,
@@ -479,7 +570,7 @@ impl Chunk16 {
 
                             if block_mapping.block_type.is_simple() {
                                 new_grid[y][z][x] =
-                                    ChunkB32Entry::make_direct(block_mapping.id as u32);
+                                    ChunkB32Entry::make_direct(block_mapping.idx as u32);
                             } else {
                                 new_grid[y][z][x] = ChunkB32Entry::make_mapped(id as u16);
                             }
@@ -543,6 +634,14 @@ impl Chunk16 {
     fn downgrade(&self) {
         todo!()
     }
+
+    pub fn get_zero_coordinate(&self) -> Coordinate {
+        self.zero_coordinate
+    }
+
+    pub fn get_num_non_air_blocks(&self) -> u16 {
+        self.num_non_air_blocks
+    }
 }
 
 impl Palette {
@@ -551,18 +650,18 @@ impl Palette {
         for ele in &mut self.mapping {
             if ele.block_type == voxel {
                 ele.num_elements += 1;
-                return ele.id;
+                return ele.idx;
             }
         }
 
         // otherwise, find the _last_ gap in the indices; we will use this index
         // (we find the last, not the first, because insertion is cheaper this way)
         for idx in (0..self.mapping.len()).rev() {
-            if self.mapping[idx].id as usize != idx {
+            if self.mapping[idx].idx as usize != idx {
                 self.mapping.insert(
                     idx,
                     BlockMapping {
-                        id: idx as u16,
+                        idx: idx as u16,
                         num_elements: 1,
                         block_type: voxel,
                     },
@@ -575,7 +674,7 @@ impl Palette {
         // no gap in the indices; append
         let new_id = self.mapping.len() as u16;
         self.mapping.push(BlockMapping {
-            id: new_id,
+            idx: new_id,
             num_elements: 1,
             block_type: voxel,
         });
@@ -583,19 +682,27 @@ impl Palette {
         return new_id;
     }
 
-    fn remove(&mut self, id: u16) {
+    fn remove(&mut self, id: u16) -> u32 {
         let index = self
             .mapping
             .iter()
-            .position(|ele| ele.id == id)
-            .expect("remove_palette: Id does not exit");
-        self.mapping[index].num_elements -= 1;
-        self.mapping.remove(index);
+            .position(|ele| ele.idx == id)
+            .expect("id does not exit");
+
+        let block_mapping = &mut self.mapping[index];
+        block_mapping.num_elements -= 1;
+        let block_id = block_mapping.block_type.get_block_id();
+
+        if block_mapping.num_elements == 0 {
+            self.mapping.remove(index);
+        }
+
+        return block_id;
     }
 
     fn get(&self, id: u16) -> &BlockMapping {
         for ele in &self.mapping {
-            if ele.id == id {
+            if ele.idx == id {
                 return &ele;
             }
         }
@@ -606,7 +713,7 @@ impl Palette {
     fn find(&self, block_id: u32) -> u16 {
         for ele in &self.mapping {
             if ele.block_type.get_block_id() == block_id {
-                return ele.id;
+                return ele.idx;
             }
         }
 
