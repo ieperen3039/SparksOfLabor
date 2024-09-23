@@ -2,7 +2,9 @@ use minecraft_protocol::ids::blocks::Block;
 use minecraft_protocol::nbt::NbtTag;
 use serde::{Deserialize, Serialize};
 
-use crate::vector_alias::{coordinate16_to_absolute, coordinate64_to_absolute, Coordinate16, Coordinate64};
+use crate::vector_alias::{
+    coordinate16_to_absolute, coordinate64_to_absolute, Coordinate16, Coordinate64,
+};
 use crate::voxel::{self, Voxel, VoxelRef};
 use crate::{
     block::BaseVoxel,
@@ -196,11 +198,15 @@ impl Chunk64 {
 }
 
 impl Chunk16 {
-    pub fn new(location: Coordinate64, fill_value : Voxel) -> Chunk16 {
+    pub fn new(location: Coordinate64, fill_value: Voxel) -> Chunk16 {
         Chunk16 {
             grid: Chunk16Grid::B0,
             palette: Palette {
-                mapping: Vec::new(),
+                mapping: vec![BlockMapping {
+                    id: 0,
+                    num_elements: 1,
+                    block_type: fill_value,
+                }],
             },
             biomes: Default::default(),
             zero_coordinate: coordinate64_to_absolute(location),
