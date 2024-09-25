@@ -11,8 +11,8 @@ use crate::{
 pub enum WorldCommand {}
 
 pub struct ChunkColumn {
-    pub chunk_x: i32,
-    pub chunk_y: i32,
+    pub chunk_x_16: i32,
+    pub chunk_y_16: i32,
     pub chunk_sections: Vec<Chunk16>,
 }
 pub struct World {
@@ -44,7 +44,7 @@ impl World {
         player_position: Position,
     ) -> (
         HashMap<String, minecraft_protocol::nbt::NbtTag>,
-        Vec<ChunkColumn>,
+        Vec<&ChunkColumn>,
     ) {
         let heightmaps = HashMap::new();
         let chunk_column = Vec::new();

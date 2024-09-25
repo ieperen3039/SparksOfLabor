@@ -18,13 +18,20 @@ use minecraft_protocol::{
 };
 use nalgebra::{Quaternion, UnitQuaternion};
 use sol_voxel_lib::{
+    chunk_convert,
     vector_alias::{Direction, Position, Rotation},
     world::World,
 };
 
 pub enum CommunicationError {
-    UnexpectedPackage { expected: String, received: String },
-    UnexpectedState { from: mc_packets::ConnectionState, to: mc_packets::ConnectionState },
+    UnexpectedPackage {
+        expected: String,
+        received: String,
+    },
+    UnexpectedState {
+        from: mc_packets::ConnectionState,
+        to: mc_packets::ConnectionState,
+    },
     SerialisationError(String),
     IoError(io::Error),
 }
@@ -510,17 +517,31 @@ pub fn initialize_client(
 
     let (heightmaps, chunks) = world.get_area(player_position);
     for chunk_column in chunks {
+        let chunk_sections: Vec<mc_components::chunk::Chunk> = chunk_column
+            .chunk_sections
+            .iter()
+            .map(chunk_convert::to_minecraft)
+            .map(|(chunks, _)| chunks)
+            .collect();
 
-        let chunk_sections: Vec<mc_components::chunk::Chunk> = chunk_column.chunk_sections;
-        let serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(chunk_sections)
+        let block_entities: Vec<mc_components::blocks::BlockEntity> = chunk_column
+            .chunk_sections
+            .iter()
+            .map(chunk_convert::get_block_entities)
+            .collect();
+
+        let block_entities_serialized = ;
+
+        let chunk_sections_serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(chunk_sections)
             .map_err(|e| CommunicationError::SerialisationError(String::from(e)))?;
+
         let chunk_data = PlayClientbound::ChunkData {
             value: mc_components::chunk::ChunkData {
-                chunk_x: cx,
-                chunk_z: cz,
+                chunk_x: chunk_column.chunk_x_16,
+                chunk_z: chunk_column.chunk_y_16,
                 heightmaps: NbtTag::Compound(heightmaps),
-                data: Array::from(serialized),
-                block_entities: Array::default(),
+                data: Array::from(chunk_sections_serialized),
+                block_entities: Array::from(block_entities_serialized),
                 sky_light_mask: Array::default(),
                 block_light_mask: Array::default(),
                 empty_sky_light_mask: Array::default(),
