@@ -17,9 +17,15 @@ pub enum VoxelRef<'a> {
 }
 
 impl Voxel {
-    pub fn from_id(block: u32) -> Voxel {
+    pub fn from_nbt(id: u32, nbt: NbtTag) -> Voxel {
+        let mut voxel = Self::from_id(id);
+        nbt.serialize(&mut voxel.nbt);
+        return voxel;
+    }
+
+    pub fn from_id(id: u32) -> Voxel {
         Voxel {
-            block_id: block,
+            block_id: id,
             nbt: Vec::new(),
         }
     }
