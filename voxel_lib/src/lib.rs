@@ -9,4 +9,3 @@ pub mod chunk;
 pub mod vector_alias;
 pub mod voxel_errors;
 pub mod world;
-pub mod chunk_convert;

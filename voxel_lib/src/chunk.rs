@@ -1,4 +1,4 @@
-use minecraft_protocol::ids::blocks as mc_ids;
+
 use serde::{Deserialize, Serialize};
 
 use crate::vector_alias::{coordinate16_to_absolute, Coordinate16};
@@ -7,6 +7,7 @@ use crate::{
     vector_alias::{Coordinate, ICoordinate},
     voxel_errors::VoxelIndexError,
 };
+use minecraft_protocol::{components::{blocks as mc_blocks, chunk as mc_chunk}, ids::blocks as mc_ids};
 
 const CHUNK_B32_ENTRY_FLAG_BIT: u32 = 1 << 31;
 
@@ -334,7 +335,7 @@ impl Chunk16 {
         };
 
         let old_block_id = self.palette.remove(old_id);
-        
+
         let voxel_was_air = mc_ids::Block::from_id(old_block_id)
             .expect("invalid id")
             .is_air_block();
@@ -345,7 +346,47 @@ impl Chunk16 {
         }
     }
 
-    pub fn from_raw_palette(grid: &[u8], palette: &[u32], position: Coordinate16) -> Chunk16 {
+    pub fn from_minecraft(mc_chunk: &mc_chunk::Chunk, position: Coordinate16) -> Chunk16 {
+        match &mc_chunk.blocks {
+            mc_chunk::PalettedData::Paletted { palette, indexed } => {
+                Chunk16::from_raw_palette(indexed, palette, position)
+            },
+            mc_chunk::PalettedData::Single { value } => {
+                // TODO from_id or from_state_id?
+                Chunk16::new(position, mc_ids::Block::from_id(*value).expect("unkown block id"))
+            },
+            mc_chunk::PalettedData::Raw { values } => {
+                Chunk16::from_direct(values, position)
+            },
+        }
+    }
+
+    pub fn to_minecraft(sol_chunk: &Self) -> (mc_chunk::Chunk, Coordinate16) {
+        let byte_size = sol_chunk.get_grid_element_byte_size();
+        let blocks = if byte_size >= 8 {
+            mc_chunk::PalettedData::Raw {
+                values: sol_chunk.as_direct().unwrap(),
+            }
+        } else if byte_size == 0 {
+            mc_chunk::PalettedData::Single {
+                value: sol_chunk.as_single().unwrap(),
+            }
+        } else {
+            let (palette, indexed) = sol_chunk.as_palette().unwrap();
+            mc_chunk::PalettedData::Paletted { palette, indexed }
+        };
+
+        return (
+            mc_chunk::Chunk {
+                block_count: sol_chunk.num_non_air_blocks as i16,
+                blocks,
+                biomes: mc_chunk::PalettedData::Single { value: 0 },
+            },
+            sol_chunk.get_zero_coordinate() / 16,
+        );
+    }
+
+    fn from_raw_palette(grid: &[u8], palette: &[u32], position: Coordinate16) -> Chunk16 {
         let mut sol_palette = Palette::new();
         for id in palette {
             sol_palette.add(Voxel::from_id(*id));
@@ -376,7 +417,8 @@ impl Chunk16 {
         // we assume that the slice can be indexed: slice[y][z][x]
         for y in 0..16usize {
             for z in 0..16usize {
-                for x4 in 0..4usize { // 0..4 because we grab the full byte
+                // 0..4 because we grab the full byte
+                for x4 in 0..4usize {
                     let byte_ref = &mut grid[y][z][x4];
                     for index_in_byte in 0..4 {
                         let new_id = slice[i];
@@ -402,7 +444,8 @@ impl Chunk16 {
         let mut i = 0;
         for y in 0..16usize {
             for z in 0..16usize {
-                for x2 in 0..8usize { // 0..8 because we grab the full byte
+                for x2 in 0..8usize {
+                    // 0..8 because we grab the full byte
                     let byte_ref = &mut grid[y][z][x2];
                     for index_in_byte in 0..2 {
                         let new_id = slice[i];
@@ -459,7 +502,7 @@ impl Chunk16 {
         return Chunk16Grid::B32(grid);
     }
 
-    pub fn from_direct(slice: &[u32], position: Coordinate16) -> Chunk16 {
+    fn from_direct(slice: &[u32], position: Coordinate16) -> Chunk16 {
         // we assume that this will require a 32-bit mapping, because otherwise it would be an indirect map
         let mut grid = Box::new([[[ChunkB32Entry::new_empty(); 16]; 16]; 16]);
 
@@ -482,7 +525,7 @@ impl Chunk16 {
         };
     }
 
-    pub fn as_direct(&self) -> Option<Vec<u32>> {
+    fn as_direct(&self) -> Option<Vec<u32>> {
         match &self.grid {
             Chunk16Grid::B32(grid) => {
                 let mut result = Vec::new();
@@ -494,10 +537,8 @@ impl Chunk16 {
                             let elt = grid[y][z][x];
 
                             if elt.is_mapped() {
-                                let id = self.palette
-                                    .get(elt.as_mapped())
-                                    .block_type
-                                    .get_block_id();
+                                let id =
+                                    self.palette.get(elt.as_mapped()).block_type.get_block_id();
 
                                 result.push(id);
                             } else {
@@ -512,21 +553,21 @@ impl Chunk16 {
             _ => return None,
         }
     }
-    
-    pub fn as_single(&self) -> Option<u32> {
+
+    fn as_single(&self) -> Option<u32> {
         match self.grid {
             Chunk16Grid::B0 => {
                 let voxel = &self.palette.mapping[0].block_type;
-                return Some(voxel.get_block_id())
+                return Some(voxel.get_block_id());
             },
             _ => return None,
         }
     }
-    
-    pub fn as_palette(&self) -> Option<(Vec<u32>, Vec<u8>, u8)> {
+
+    fn as_palette(&self) -> Option<(Vec<u32>, Vec<u8>)> {
         let mut palette = Vec::new();
         let mut indices = Vec::new();
-        
+
         for ele in &self.palette.mapping {
             palette.push(ele.block_type.get_block_id());
         }
@@ -534,53 +575,59 @@ impl Chunk16 {
         match &self.grid {
             Chunk16Grid::B8(grid) => {
                 indices.reserve(16 * 16 * 16);
-                    for y in 0..16usize {
-                        for z in 0..16usize {
-                            for x in 0..16usize {
-                                indices.push(grid[y][z][x]);
-                            }
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        for x in 0..16usize {
+                            indices.push(grid[y][z][x]);
                         }
                     }
-    
-                    return Some((palette, indices, 8));
+                }
+
+                return Some((palette, indices));
             },
             Chunk16Grid::B4(grid) => {
                 indices.reserve(16 * 16 * 8);
 
                 for y in 0..16usize {
                     for z in 0..16usize {
-                        for x2 in 0..8usize { // 0..8 because we copy the whole byte
-                            indices.push(grid[y][z][x2]);
+                        // 0..8 because we grab the whole byte
+                        for x2 in 0..8usize {
+                            let byte = grid[y][z][x2];
+
+                            let masked_value = byte & 0b00001111;
+                            indices.push(masked_value);
+
+                            let masked_value = (byte & 0b11110000) >> 4;
+                            indices.push(masked_value);
                         }
                     }
                 }
-                return Some((palette, indices, 4));
+                return Some((palette, indices));
             },
             Chunk16Grid::B2(grid) => {
-                // we can't send 2-bit block ids, and I assume that converting to 4-bit block ids
-                // is less efficient than just sending 8-bit block ids instead
                 indices.reserve(16 * 16 * 16);
 
                 for y in 0..16usize {
                     for z in 0..16usize {
-                        for x4 in 0..4usize { // 0..4 because we grab the full byte
+                        // 0..4 because we grab the full byte
+                        for x4 in 0..4usize {
                             let byte = grid[y][z][x4];
                             for index_in_byte in 0..4 {
                                 let num_bit_shifts = index_in_byte * 2;
                                 let masked_value = (byte & (0b11 << num_bit_shifts)) >> num_bit_shifts;
                                 indices.push(masked_value);
-                            };
+                            }
                         }
                     }
                 }
 
-                return Some((palette, indices, 8));
+                return Some((palette, indices));
             },
             Chunk16Grid::B32(_) | Chunk16Grid::B0 => return None,
         }
     }
 
-    pub fn get_grid_element_byte_size(&self) -> usize {
+    fn get_grid_element_byte_size(&self) -> usize {
         match self.grid {
             Chunk16Grid::B32(_) => 32,
             Chunk16Grid::B8(_) => 8,
@@ -633,8 +680,7 @@ impl Chunk16 {
                             let block_mapping = self.palette.get(id as u16);
 
                             if block_mapping.block_type.is_simple() {
-                                new_grid[y][z][x] =
-                                    ChunkB32Entry::make_direct(block_mapping.idx as u32);
+                                new_grid[y][z][x] = ChunkB32Entry::make_direct(block_mapping.idx as u32);
                             } else {
                                 new_grid[y][z][x] = ChunkB32Entry::make_mapped(id as u16);
                             }
@@ -653,7 +699,7 @@ impl Chunk16 {
                             let byte_ref: u8 = grid[y][z][x / 2];
 
                             if x % 2 == 0 {
-                                new_grid[y][z][x] = byte_ref & 0b00001111;
+                                new_grid[y][z][x] = byte_ref;
                             } else {
                                 new_grid[y][z][x] = (byte_ref & 0b11110000) >> 4;
                             };
@@ -675,12 +721,11 @@ impl Chunk16 {
                             let id = (old_byte & (0b11 << num_bit_shifts)) >> num_bit_shifts;
 
                             let byte_ref: &mut u8 = &mut new_grid[y][z][x / 2];
-                            let id_4bit = id as u8 & 0b1111;
 
                             if x % 2 == 0 {
-                                *byte_ref |= id_4bit;
+                                *byte_ref |= id;
                             } else {
-                                *byte_ref |= id_4bit << 4;
+                                *byte_ref |= id << 4;
                             }
                         }
                     }
@@ -701,17 +746,6 @@ impl Chunk16 {
 
     pub fn get_zero_coordinate(&self) -> Coordinate {
         self.zero_coordinate
-    }
-
-    pub fn get_num_non_air_blocks(&self) -> u16 {
-        self.num_non_air_blocks
-    }
-    
-    pub fn get_block_entities(&self) -> Vec<Voxel> {
-        self.palette.mapping.iter()
-            .map(|elt| elt.block_type)
-            .filter(|v| !v.is_simple())
-            .collect()
     }
 }
 
