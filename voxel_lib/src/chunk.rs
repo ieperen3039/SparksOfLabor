@@ -7,7 +7,7 @@ use crate::{
     vector_alias::{Coordinate, ICoordinate},
     voxel_errors::VoxelIndexError,
 };
-use minecraft_protocol::{components::{blocks as mc_blocks, chunk as mc_chunk}, ids::blocks as mc_ids};
+use minecraft_protocol::{components::chunk as mc_chunk, ids::blocks as mc_ids};
 
 const CHUNK_B32_ENTRY_FLAG_BIT: u32 = 1 << 31;
 
@@ -362,18 +362,84 @@ impl Chunk16 {
     }
 
     pub fn to_minecraft(sol_chunk: &Self) -> (mc_chunk::Chunk, Coordinate16) {
-        let byte_size = sol_chunk.get_grid_element_byte_size();
-        let blocks = if byte_size >= 8 {
-            mc_chunk::PalettedData::Raw {
-                values: sol_chunk.as_direct().unwrap(),
+        let mut indices = Vec::new();
+        indices.reserve(16 * 16 * 16);
+
+        let mut palette = Vec::new();
+        for ele in &sol_chunk.palette.mapping {
+            palette.push(ele.block_type.get_block_id());
+        }
+
+        let blocks = match &sol_chunk.grid {
+            Chunk16Grid::B32(grid) => {
+                let mut values = Vec::new();
+                values.reserve(16 * 16 * 16);
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        for x in 0..16usize {
+                            let elt = grid[y][z][x];
+
+                            if elt.is_mapped() {
+                                let id =
+                                sol_chunk.palette.get(elt.as_mapped()).block_type.get_block_id();
+
+                                values.push(id);
+                            } else {
+                                values.push(elt.as_direct());
+                            }
+                        }
+                    }
+                }
+                mc_chunk::PalettedData::Raw { values }
+            },
+            Chunk16Grid::B8(grid) => {
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        for x in 0..16usize {
+                            indices.push(grid[y][z][x]);
+                        }
+                    }
+                }
+                mc_chunk::PalettedData::Paletted { palette, indexed: indices }
+            },
+            Chunk16Grid::B4(grid) => {
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        // 0..8 because we grab the whole byte
+                        for x2 in 0..8usize {
+                            let byte = grid[y][z][x2];
+
+                            let masked_value = byte & 0b00001111;
+                            indices.push(masked_value);
+
+                            let masked_value = (byte & 0b11110000) >> 4;
+                            indices.push(masked_value);
+                        }
+                    }
+                }
+                mc_chunk::PalettedData::Paletted { palette, indexed: indices }
+            },
+            Chunk16Grid::B2(grid) => {
+                for y in 0..16usize {
+                    for z in 0..16usize {
+                        // 0..4 because we grab the full byte
+                        for x4 in 0..4usize {
+                            let byte = grid[y][z][x4];
+                            for index_in_byte in 0..4 {
+                                let num_bit_shifts = index_in_byte * 2;
+                                let masked_value = (byte & (0b11 << num_bit_shifts)) >> num_bit_shifts;
+                                indices.push(masked_value);
+                            }
+                        }
+                    }
+                }
+                
+                mc_chunk::PalettedData::Paletted { palette, indexed: indices }
+            },
+            Chunk16Grid::B0 => {
+                let voxel = &sol_chunk.palette.mapping[0].block_type;
+                mc_chunk::PalettedData::Single { value: voxel.get_block_id() }
             }
-        } else if byte_size == 0 {
-            mc_chunk::PalettedData::Single {
-                value: sol_chunk.as_single().unwrap(),
-            }
-        } else {
-            let (palette, indexed) = sol_chunk.as_palette().unwrap();
-            mc_chunk::PalettedData::Paletted { palette, indexed }
         };
 
         return (
@@ -449,8 +515,6 @@ impl Chunk16 {
                     let byte_ref = &mut grid[y][z][x2];
                     for index_in_byte in 0..2 {
                         let new_id = slice[i];
-
-                        let byte_ref = &mut grid[y][z][x2];
                         let id_4bit = new_id & 0b1111;
 
                         if index_in_byte == 0 {
@@ -523,118 +587,6 @@ impl Chunk16 {
             zero_coordinate: coordinate16_to_absolute(position),
             num_non_air_blocks: 0,
         };
-    }
-
-    fn as_direct(&self) -> Option<Vec<u32>> {
-        match &self.grid {
-            Chunk16Grid::B32(grid) => {
-                let mut result = Vec::new();
-                result.reserve(16 * 16 * 16);
-
-                for y in 0..16usize {
-                    for z in 0..16usize {
-                        for x in 0..16usize {
-                            let elt = grid[y][z][x];
-
-                            if elt.is_mapped() {
-                                let id =
-                                    self.palette.get(elt.as_mapped()).block_type.get_block_id();
-
-                                result.push(id);
-                            } else {
-                                result.push(elt.as_direct());
-                            }
-                        }
-                    }
-                }
-
-                return Some(result);
-            },
-            _ => return None,
-        }
-    }
-
-    fn as_single(&self) -> Option<u32> {
-        match self.grid {
-            Chunk16Grid::B0 => {
-                let voxel = &self.palette.mapping[0].block_type;
-                return Some(voxel.get_block_id());
-            },
-            _ => return None,
-        }
-    }
-
-    fn as_palette(&self) -> Option<(Vec<u32>, Vec<u8>)> {
-        let mut palette = Vec::new();
-        let mut indices = Vec::new();
-
-        for ele in &self.palette.mapping {
-            palette.push(ele.block_type.get_block_id());
-        }
-
-        match &self.grid {
-            Chunk16Grid::B8(grid) => {
-                indices.reserve(16 * 16 * 16);
-                for y in 0..16usize {
-                    for z in 0..16usize {
-                        for x in 0..16usize {
-                            indices.push(grid[y][z][x]);
-                        }
-                    }
-                }
-
-                return Some((palette, indices));
-            },
-            Chunk16Grid::B4(grid) => {
-                indices.reserve(16 * 16 * 8);
-
-                for y in 0..16usize {
-                    for z in 0..16usize {
-                        // 0..8 because we grab the whole byte
-                        for x2 in 0..8usize {
-                            let byte = grid[y][z][x2];
-
-                            let masked_value = byte & 0b00001111;
-                            indices.push(masked_value);
-
-                            let masked_value = (byte & 0b11110000) >> 4;
-                            indices.push(masked_value);
-                        }
-                    }
-                }
-                return Some((palette, indices));
-            },
-            Chunk16Grid::B2(grid) => {
-                indices.reserve(16 * 16 * 16);
-
-                for y in 0..16usize {
-                    for z in 0..16usize {
-                        // 0..4 because we grab the full byte
-                        for x4 in 0..4usize {
-                            let byte = grid[y][z][x4];
-                            for index_in_byte in 0..4 {
-                                let num_bit_shifts = index_in_byte * 2;
-                                let masked_value = (byte & (0b11 << num_bit_shifts)) >> num_bit_shifts;
-                                indices.push(masked_value);
-                            }
-                        }
-                    }
-                }
-
-                return Some((palette, indices));
-            },
-            Chunk16Grid::B32(_) | Chunk16Grid::B0 => return None,
-        }
-    }
-
-    fn get_grid_element_byte_size(&self) -> usize {
-        match self.grid {
-            Chunk16Grid::B32(_) => 32,
-            Chunk16Grid::B8(_) => 8,
-            Chunk16Grid::B4(_) => 4,
-            Chunk16Grid::B2(_) => 2,
-            Chunk16Grid::B0 => 0,
-        }
     }
 
     fn max_num_palettes(&self) -> usize {
