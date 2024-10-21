@@ -4,7 +4,7 @@ use minecraft_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Voxel {
     block_id: u32,
     nbt: Vec<u8>,
@@ -29,7 +29,7 @@ impl Voxel {
             nbt: Vec::new(),
         }
     }
-    
+
     pub fn from_block(block: Block) -> Voxel {
         Self::from_id(block as u32)
     }
@@ -50,7 +50,7 @@ impl Voxel {
         if self.nbt.is_empty() {
             return NbtTag::Null;
         }
-        
+
         match nbt::parse_nbt(&self.nbt) {
             Ok((result, _)) => return result,
             Err(_) => panic!("Corrupted voxel nbt"),
@@ -58,6 +58,37 @@ impl Voxel {
     }
 
     pub fn is_air(&self) -> bool {
-        self.get_block().is_air_block() 
+        self.get_block().is_air_block()
+    }
+}
+
+impl VoxelRef<'_> {
+    pub fn is_simple(&self) -> bool {
+        match self {
+            VoxelRef::Inferred(_) => true,
+            VoxelRef::Real(v) => v.is_simple(),
+        }
+    }
+
+    pub fn get_block(&self) -> Block {
+        match self {
+            VoxelRef::Inferred(id) => Block::from_id(*id).expect("Corrupted voxel"),
+            VoxelRef::Real(v) => v.get_block(),
+        }
+    }
+
+    pub fn get_block_id(&self) -> u32 {
+        match self {
+            VoxelRef::Inferred(id) => *id,
+            VoxelRef::Real(v) => v.get_block_id(),
+        }
+    }
+
+    pub fn get_nbt_data(&self) -> NbtTag {
+        return NbtTag::Null;
+    }
+
+    pub fn is_air(&self) -> bool {
+        self.get_block().is_air_block()
     }
 }

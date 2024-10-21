@@ -1,25 +1,23 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::BTreeMap,
     io,
     net::{SocketAddr, TcpStream},
     time::Duration,
 };
 
 use super::network;
-use minecraft_positions::{ChunkColumnPosition, ChunkPosition};
 use minecraft_protocol::{
-    components as mc_components,
+    components::{self as mc_components, blocks::BlockEntity},
     nbt::NbtTag,
     packets::{
         self as mc_packets, play_clientbound::ClientboundPacket as PlayClientbound,
-        play_serverbound::ServerboundPacket as PlayServerbound, Array,
+        play_serverbound::ServerboundPacket as PlayServerbound, Array, ConnectionState,
     },
     MinecraftPacketPart,
 };
-use nalgebra::{Quaternion, UnitQuaternion};
 use sol_voxel_lib::{
-    chunk_convert,
-    vector_alias::{Direction, Position, Rotation},
+    chunk as sol_chunk,
+    vector_alias::{Position, Rotation},
     world::World,
 };
 
@@ -60,8 +58,10 @@ pub struct LoggedInPlayerInfo {
     uuid: u128,
 }
 
-pub fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> io::Result<()> {
+pub fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> Result<(), CommunicationError> {
     stream.set_read_timeout(Some(Duration::from_millis(50)))?;
+
+    let mut state = ConnectionState::HandShake;
 
     let mut buffer = Vec::new();
     let handshake_packet: mc_packets::handshake::ServerboundPacket =
@@ -88,10 +88,7 @@ pub fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> io::Result<
                 todo!("Handle ConnectionState::Status")
             },
             _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Unexpected next state: {next_state:?}",
-                ))
+                return Err(CommunicationError::UnexpectedState { from: state, to: next_state })
             },
         };
     }
@@ -517,23 +514,20 @@ pub fn initialize_client(
 
     let (heightmaps, chunks) = world.get_area(player_position);
     for chunk_column in chunks {
-        let chunk_sections: Vec<mc_components::chunk::Chunk> = chunk_column
+        let results = chunk_column
             .chunk_sections
             .iter()
-            .map(chunk_convert::to_minecraft)
-            .map(|(chunks, _)| chunks)
-            .collect();
+            .map(sol_chunk::Chunk16::to_minecraft)
+            .map(|(chunks, _, block_entities) | (chunks, block_entities))
+            .unzip();
 
-        let block_entities: Vec<mc_components::blocks::BlockEntity> = chunk_column
-            .chunk_sections
-            .iter()
-            .map(chunk_convert::get_block_entities)
-            .collect();
-
-        let block_entities_serialized = ;
+        let chunk_sections = results.0;
+        let block_entities : Vec<Vec<BlockEntity>> = results.1;
 
         let chunk_sections_serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(chunk_sections)
             .map_err(|e| CommunicationError::SerialisationError(String::from(e)))?;
+
+        let block_entities : Vec<BlockEntity> = block_entities.into_iter().flatten().collect();
 
         let chunk_data = PlayClientbound::ChunkData {
             value: mc_components::chunk::ChunkData {
@@ -541,7 +535,7 @@ pub fn initialize_client(
                 chunk_z: chunk_column.chunk_y_16,
                 heightmaps: NbtTag::Compound(heightmaps),
                 data: Array::from(chunk_sections_serialized),
-                block_entities: Array::from(block_entities_serialized),
+                block_entities: Array::from(block_entities),
                 sky_light_mask: Array::default(),
                 block_light_mask: Array::default(),
                 empty_sky_light_mask: Array::default(),

@@ -236,7 +236,7 @@ impl Chunk16 {
             Chunk16Grid::B0 => 0,
         };
 
-        return VoxelRef::Real(&self.palette.get(id));
+        return self.palette.get(id);
     }
 
     pub fn set_voxel_internal(&mut self, coord: ICoordinate, voxel: Voxel) {
@@ -247,7 +247,7 @@ impl Chunk16 {
             self.num_non_air_blocks += 1;
         }
 
-        let new_id = self.palette.add(voxel);
+        let new_id = self.palette.add_voxel(voxel, coord);
         if self.palette.len() > self.max_num_palettes() {
             self.upgrade();
         }
@@ -291,7 +291,8 @@ impl Chunk16 {
             Chunk16Grid::B32(grid) => {
                 let chunk_b32_entry = grid[coord.y][coord.z][coord.x];
                 let old_id = if chunk_b32_entry.is_direct() {
-                    self.palette.find(chunk_b32_entry.as_direct())
+                    self.palette
+                        .find(chunk_b32_entry.as_direct())
                         .expect("direct entries in grid must be in palette")
                 } else {
                     chunk_b32_entry.as_mapped()
@@ -345,28 +346,32 @@ impl Chunk16 {
     ) -> (mc_chunk::Chunk, Coordinate16, Vec<mc_blocks::BlockEntity>) {
         let mut indices = Vec::new();
         let mut palette = Vec::new();
-        let mut block_entities = Vec::new();
 
         match &sol_chunk.grid {
             Chunk16Grid::B8(_) | Chunk16Grid::B4(_) | Chunk16Grid::B2(_) => {
                 indices.reserve(16 * 16 * 16);
 
-                for ele in &sol_chunk.palette.all() {
-                    palette.push(ele.get_block_id());
+                for ele in sol_chunk.palette.all() {
+                    palette.push(ele);
                 }
             },
             Chunk16Grid::B32(_) | Chunk16Grid::B0 => {},
         }
 
-        {
-            BlockEntity::new(
-                x as u8,
-                self.zero_coordinate.y + (y as i32),
-                z as u8,
-                voxel.get_block(),
-                voxel.get_nbt_data(),
-            )
-        }
+        let block_entities: Vec<mc_blocks::BlockEntity> = sol_chunk
+            .palette
+            .all_nbt_voxels()
+            .iter()
+            .map(|v| {
+                BlockEntity::new(
+                    v.relative_x as u8,
+                    sol_chunk.zero_coordinate.y + (v.relative_y as i32),
+                    v.relative_z as u8,
+                    v.voxel.get_block(),
+                    v.voxel.get_nbt_data(),
+                )
+            })
+            .collect();
 
         let blocks = match &sol_chunk.grid {
             Chunk16Grid::B32(grid) => {
@@ -380,15 +385,6 @@ impl Chunk16 {
 
                             if elt.is_mapped() {
                                 let voxel = &sol_chunk.palette.get(elt.as_mapped());
-
-                                block_entities.push(BlockEntity::new(
-                                    x as u8,
-                                    sol_chunk.zero_coordinate.y + (y as i32),
-                                    z as u8,
-                                    voxel.get_block(),
-                                    voxel.get_nbt_data(),
-                                ));
-
                                 values.push(voxel.get_block_id());
                             } else {
                                 values.push(elt.as_direct());
@@ -474,7 +470,7 @@ impl Chunk16 {
     fn from_raw_palette(grid: &[u8], palette: &[u32], position: Coordinate16) -> Chunk16 {
         let mut sol_palette = Palette::new();
         for id in palette {
-            sol_palette.add(Voxel::from_id(*id));
+            sol_palette.add(*id);
         }
 
         let grid = if palette.len() < (1 << 2) {
@@ -654,8 +650,7 @@ impl Chunk16 {
 
                             // note: we do not change the palette
                             if block_mapping.is_simple() {
-                                new_grid[y][z][x] =
-                                    ChunkB32Entry::make_direct(id as u32);
+                                new_grid[y][z][x] = ChunkB32Entry::make_direct(id as u32);
                             } else {
                                 new_grid[y][z][x] = ChunkB32Entry::make_mapped(id as u16);
                             }
