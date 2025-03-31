@@ -5,18 +5,26 @@ use std::{
 };
 
 use minecraft_protocol::packets as mc_packets;
+use sol_voxel_lib::world::World;
 
-use super::login::{self, CommunicationError};
 use super::network;
+use super::{
+    login::{self, CommunicationError, PlayerConnectionData},
+    player_character::PlayerCharacter,
+};
 
 pub struct Connection {}
 
-impl Connection {
-    pub fn await_connect() -> Result<Connection, CommunicationError> {
+pub struct Socket<'world> {
+    world: &'world World,
+}
+
+impl Socket<'_> {
+    pub fn await_connect(&self) -> Result<(PlayerConnectionData, TcpStream), CommunicationError> {
         let listener = TcpListener::bind("127.0.0.1:25567").expect("Failed to listen");
 
         // Accept 1 incoming connections
-        let (stream, addr) = listener.accept()?;
+        let (mut stream, _addr) = listener.accept()?;
         stream.set_read_timeout(Some(Duration::from_millis(50)))?;
 
         let mut buffer = Vec::new();
@@ -24,18 +32,18 @@ impl Connection {
             network::receive_packet(&mut stream, &mut buffer)?;
 
         let mc_packets::handshake::ServerboundPacket::Hello {
-            protocol_version,
-            server_address,
-            server_port,
+            protocol_version: _,
+            server_address: _,
+            server_port: _,
             next_state,
-        } = handshake_packet
-        else {
-            unreachable!()
-        };
+        } = handshake_packet;
 
-        let player_info = match next_state {
+        match next_state {
             mc_packets::ConnectionState::Login => {
-                login::login(&mut stream, addr)?
+                let player_info = login::login(&mut stream)?;
+
+                // TODO keep the player busy while we connect to the back-end
+                return Ok((player_info, stream));
             },
             mc_packets::ConnectionState::Status => {
                 todo!("Handle ConnectionState::Status")
@@ -43,15 +51,24 @@ impl Connection {
             _ => {
                 return Err(CommunicationError::UnexpectedState {
                     from: mc_packets::ConnectionState::HandShake,
-                    to: next_state
+                    to: next_state,
                 })
             },
         };
+    }
 
-        let player_info = login::initialize_client(&mut stream, player_info, world)?;
-        let uuid = player_info.uuid;
-        let eid = world.spawn_player(stream, player_info);
+    pub fn join_game(
+        &self,
+        player: PlayerConnectionData,
+        character: &PlayerCharacter,
+        socket: TcpStream,
+    ) -> Result<(), CommunicationError> {
+        // player is spawning
 
-        return Ok(Connection {});
+        let player_info = login::initialize_client(socket, player, character)?;
+        login::send_initial_chunk_data(&mut player_info.socket, self.world, character.positon)?;
+        let eid = self.world.spawn_player(player_info, character.positon);
+
+        return Ok(());
     }
 }

@@ -1,11 +1,11 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     io,
     net::{SocketAddr, TcpStream},
     time::Duration,
 };
 
-use super::network;
+use super::{network, player_character::PlayerCharacter};
 use minecraft_protocol::{
     components::{self as mc_components, blocks::BlockEntity},
     nbt::NbtTag,
@@ -18,7 +18,7 @@ use minecraft_protocol::{
 use sol_voxel_lib::{
     chunk as sol_chunk,
     vector_alias::{Position, Rotation},
-    world::World,
+    world::{ChunkColumn, World},
 };
 
 pub enum CommunicationError {
@@ -52,52 +52,14 @@ impl From<io::Error> for CommunicationError {
     }
 }
 
-pub struct LoggedInPlayerInfo {
-    addr: SocketAddr,
+pub struct PlayerConnectionData {
     username: String,
     uuid: u128,
 }
 
-pub fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> Result<(), CommunicationError> {
-    stream.set_read_timeout(Some(Duration::from_millis(50)))?;
-
-    let mut state = ConnectionState::HandShake;
-
-    let mut buffer = Vec::new();
-    let handshake_packet: mc_packets::handshake::ServerboundPacket =
-        network::receive_packet(&mut stream, &mut buffer)?;
-
-    let mc_packets::handshake::ServerboundPacket::Hello {
-        protocol_version,
-        server_address,
-        server_port,
-        next_state,
-    } = handshake_packet
-    else {
-        unreachable!()
-    };
-
-    loop {
-        match next_state {
-            mc_packets::ConnectionState::Login => {
-                let player_info = login(&mut stream, addr)?;
-                return Ok(());
-            },
-            mc_packets::ConnectionState::Status => {
-                // status(&mut stream);
-                todo!("Handle ConnectionState::Status")
-            },
-            _ => {
-                return Err(CommunicationError::UnexpectedState { from: state, to: next_state })
-            },
-        };
-    }
-}
-
 pub fn login(
     stream: &mut TcpStream,
-    addr: SocketAddr,
-) -> Result<LoggedInPlayerInfo, CommunicationError> {
+) -> Result<PlayerConnectionData, CommunicationError> {
     // Receive login start
     let mut buffer = Vec::new();
     let packet: mc_packets::login::ServerboundPacket =
@@ -112,6 +74,11 @@ pub fn login(
     };
     println!("LoginStart: {username}");
 
+    // copy username out of the buffer to drop the buffer early
+    // We must own the username anyway if we later want to move the username
+    let username = username.to_owned();
+    drop(buffer);
+
     // OPTIONAL encryption
 
     // OPTIONAL compression
@@ -119,10 +86,10 @@ pub fn login(
     // Send login success
     let login_success = mc_packets::login::ClientboundPacket::LoginSuccess {
         uuid: player_uuid,
-        username,
+        username: &username,
         properties: Array::default(),
     };
-    drop(buffer);
+
     network::send_packet(stream, login_success);
     println!("LoginSuccess sent");
 
@@ -146,15 +113,14 @@ pub fn login(
         println!("EncryptionResponse received and ignored");
     }
 
-    Ok(LoggedInPlayerInfo {
-        addr,
-        username: username.to_owned(),
+    Ok(PlayerConnectionData {
+        username,
         uuid: player_uuid,
     })
 }
 
 pub struct PlayerInfo {
-    pub addr: SocketAddr,
+    pub socket: TcpStream,
     pub username: String,
     pub uuid: u128,
     pub locale: String,
@@ -168,10 +134,12 @@ pub struct PlayerInfo {
 }
 
 pub fn initialize_client(
-    stream: &mut TcpStream,
-    logged_in_player_info: LoggedInPlayerInfo,
-    world: World,
+    mut socket: TcpStream,
+    logged_in_player_info: PlayerConnectionData,
+    character : &PlayerCharacter
 ) -> Result<PlayerInfo, CommunicationError> {
+    let stream = &mut socket;
+
     // Receive client informations
     let mut buffer = Vec::new();
     let packet: mc_packets::config::ServerboundPacket =
@@ -242,6 +210,7 @@ pub fn initialize_client(
 
     // Send join game
     let player_id: usize = 3429; // TODO dynamic attribution
+
     let join_game = PlayClientbound::JoinGame {
         player_id: player_id as i32,
         is_hardcore: false,
@@ -349,7 +318,7 @@ pub fn initialize_client(
 
     // Send server metadata
     let server_data = PlayClientbound::ServerData {
-        motd: "{\"text\":\"A Minecraft Server\"}",
+        motd: "{\"text\":\"Not like any other Minecraft Server\"}",
         icon: None,
         enforces_secure_chat: false,
     };
@@ -507,27 +476,61 @@ pub fn initialize_client(
     network::send_packet(stream, set_experience);
     println!("SetExperience sent");
 
+    Ok(PlayerInfo {
+        socket,
+        username: logged_in_player_info.username,
+        uuid: logged_in_player_info.uuid,
+        locale: locale.to_owned(),
+        render_distance: render_distance.try_into().unwrap_or(5),
+        chat_mode,
+        chat_colors,
+        displayed_skin_parts,
+        main_hand,
+        enable_text_filtering,
+        allow_server_listing,
+    })
+}
+
+pub fn send_initial_chunk_data(
+    stream: &mut TcpStream,
+    world: &World, 
+    player_position: Position,
+) -> Result<(), CommunicationError> {
     // Chunk batch start
     let chunk_data = PlayClientbound::ChunkBatchStart;
     network::send_packet(stream, chunk_data);
     println!("ChunkBatchStart sent");
 
-    let (heightmaps, chunks) = world.get_area(player_position);
+    let chunks = world.get_area(player_position);
     for chunk_column in chunks {
         let results = chunk_column
             .chunk_sections
             .iter()
             .map(sol_chunk::Chunk16::to_minecraft)
-            .map(|(chunks, _, block_entities) | (chunks, block_entities))
+            .map(|(chunks, _, block_entities)| (chunks, block_entities))
             .unzip();
 
         let chunk_sections = results.0;
-        let block_entities : Vec<Vec<BlockEntity>> = results.1;
+        let block_entities: Vec<Vec<BlockEntity>> = results.1;
 
-        let chunk_sections_serialized: Vec<u8> = mc_components::chunk::Chunk::into_data(chunk_sections)
-            .map_err(|e| CommunicationError::SerialisationError(String::from(e)))?;
+        let chunk_sections_serialized: Vec<u8> =
+            mc_components::chunk::Chunk::into_data(chunk_sections)
+                .map_err(|e| CommunicationError::SerialisationError(String::from(e)))?;
 
-        let block_entities : Vec<BlockEntity> = block_entities.into_iter().flatten().collect();
+        let block_entities: Vec<BlockEntity> = block_entities.into_iter().flatten().collect();
+
+        let heightmap_world_surface = chunk_column.heightmap_world_surface;
+        let heightmap_motion_blocking = chunk_column.heightmap_motion_blocking;
+
+        let mut heightmaps = HashMap::new();
+        heightmaps.insert(
+            String::from("WORLD_SURFACE"),
+            NbtTag::LongArray(chunk_column.to_minecraft(&heightmap_world_surface)),
+        );
+        heightmaps.insert(
+            String::from("MOTION_BLOCKING"),
+            NbtTag::LongArray(chunk_column.to_minecraft(&heightmap_motion_blocking)),
+        );
 
         let chunk_data = PlayClientbound::ChunkData {
             value: mc_components::chunk::ChunkData {
@@ -567,17 +570,5 @@ pub fn initialize_client(
     };
     println!("ChunkBatchReceived received");
 
-    Ok(PlayerInfo {
-        addr: logged_in_player_info.addr,
-        username: logged_in_player_info.username,
-        uuid: logged_in_player_info.uuid,
-        locale: locale.to_owned(),
-        render_distance: render_distance.try_into().unwrap_or(5),
-        chat_mode,
-        chat_colors,
-        displayed_skin_parts,
-        main_hand,
-        enable_text_filtering,
-        allow_server_listing,
-    })
+    return Ok(());
 }
