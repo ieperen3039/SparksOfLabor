@@ -1,9 +1,13 @@
+use std::array;
+
 use minecraft_protocol::components::blocks::BlockEntity;
 use serde::{Deserialize, Serialize};
 
 use crate::palette::Palette;
-use crate::vector_alias::{coordinate16_to_absolute, Coordinate16};
-use crate::voxel::{Voxel, VoxelRef};
+use crate::vector_alias::{
+    coordinate16_to_absolute, coordinate64_to_coordinate16, Coordinate16, Coordinate64,
+};
+use crate::voxel::{self, Voxel, VoxelRef};
 use crate::{
     vector_alias::{Coordinate, ICoordinate},
     voxel_errors::VoxelIndexError,
@@ -142,6 +146,23 @@ fn from_internal(coord: ICoordinate, zero_coord: Coordinate, internal_step: i32)
 }
 
 impl Chunk64 {
+    pub fn new(zero_coordinate: Coordinate64, fill_value: mc_ids::Block) -> Self {
+        let coord16 = coordinate64_to_coordinate16(zero_coordinate);
+
+        let voxels = array::from_fn(|y| {
+            array::from_fn(|z| {
+                array::from_fn(|x| {
+                    Chunk16::new(coord16 + Coordinate16::new(x as i32, y as i32, z as i32), fill_value)
+                })
+            })
+        });
+
+        Chunk64 {
+            voxels,
+            zero_coordinate,
+        }
+    }
+
     pub fn get_chunk16<'s>(&'s self, coord: Coordinate) -> Result<&'s Chunk16, VoxelIndexError> {
         let internal_coord = to_internal(coord, self.zero_coordinate, 16, 4)
             .ok_or(VoxelIndexError { coordinate: coord })?;
@@ -635,8 +656,6 @@ impl Chunk16 {
     }
 
     fn upgrade(&mut self) {
-        let mut new_palette = Palette::new();
-
         match &self.grid {
             Chunk16Grid::B32(_) => return,
             Chunk16Grid::B8(grid) => {

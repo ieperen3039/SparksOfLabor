@@ -1,11 +1,11 @@
 use std::{
-    io,
     net::{SocketAddr, TcpListener, TcpStream},
     time::Duration,
 };
 
+use crate::voxels::world::World;
 use minecraft_protocol::packets as mc_packets;
-use sol_voxel_lib::world::World;
+use sol_address_server::static_addresses;
 
 use super::network;
 use super::{
@@ -13,19 +13,18 @@ use super::{
     player_character::PlayerCharacter,
 };
 
+const CLIENT_CONNECTION_TIMEOUT: Duration = Duration::from_millis(50);
+
 pub struct Connection {}
 
-pub struct Socket<'world> {
-    world: &'world World,
-}
-
-impl Socket<'_> {
-    pub fn await_connect(&self) -> Result<(PlayerConnectionData, TcpStream), CommunicationError> {
-        let listener = TcpListener::bind("127.0.0.1:25567").expect("Failed to listen");
+impl Connection {
+    pub fn await_connect() -> Result<(PlayerConnectionData, TcpStream), CommunicationError> {
+        let listener =
+            TcpListener::bind(static_addresses::MINECRAFT_SERVER_BIND).expect("Failed to listen");
 
         // Accept 1 incoming connections
         let (mut stream, _addr) = listener.accept()?;
-        stream.set_read_timeout(Some(Duration::from_millis(50)))?;
+        stream.set_read_timeout(Some(CLIENT_CONNECTION_TIMEOUT))?;
 
         let mut buffer = Vec::new();
         let handshake_packet: mc_packets::handshake::ServerboundPacket =
@@ -57,18 +56,17 @@ impl Socket<'_> {
         };
     }
 
-    pub fn join_game(
-        &self,
+    pub fn send_player_join(
         player: PlayerConnectionData,
         character: &PlayerCharacter,
+        world: &mut World,
         socket: TcpStream,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<login::PlayerInfo, CommunicationError> {
         // player is spawning
 
-        let player_info = login::initialize_client(socket, player, character)?;
-        login::send_initial_chunk_data(&mut player_info.socket, self.world, character.positon)?;
-        let eid = self.world.spawn_player(player_info, character.positon);
+        let mut player_info = login::initialize_client(socket, player, character)?;
+        login::send_initial_chunk_data(&mut player_info.socket, world, character.positon)?;
 
-        return Ok(());
+        return Ok(player_info);
     }
 }

@@ -8,5 +8,5 @@ pub mod voxel;
 pub mod chunk;
 pub mod vector_alias;
 pub mod voxel_errors;
-pub mod world;
 mod palette;
+pub mod chunk_column;

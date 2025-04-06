@@ -1,8 +1,8 @@
+use crate::voxels::world::World;
 use std::{
     collections::{BTreeMap, HashMap},
     io,
-    net::{SocketAddr, TcpStream},
-    time::Duration,
+    net::TcpStream,
 };
 
 use super::{network, player_character::PlayerCharacter};
@@ -11,16 +11,16 @@ use minecraft_protocol::{
     nbt::NbtTag,
     packets::{
         self as mc_packets, play_clientbound::ClientboundPacket as PlayClientbound,
-        play_serverbound::ServerboundPacket as PlayServerbound, Array, ConnectionState,
+        play_serverbound::ServerboundPacket as PlayServerbound, Array,
     },
     MinecraftPacketPart,
 };
 use sol_voxel_lib::{
     chunk as sol_chunk,
     vector_alias::{Position, Rotation},
-    world::{ChunkColumn, World},
 };
 
+#[derive(Debug)]
 pub enum CommunicationError {
     UnexpectedPackage {
         expected: String,
@@ -57,9 +57,7 @@ pub struct PlayerConnectionData {
     uuid: u128,
 }
 
-pub fn login(
-    stream: &mut TcpStream,
-) -> Result<PlayerConnectionData, CommunicationError> {
+pub fn login(stream: &mut TcpStream) -> Result<PlayerConnectionData, CommunicationError> {
     // Receive login start
     let mut buffer = Vec::new();
     let packet: mc_packets::login::ServerboundPacket =
@@ -136,7 +134,7 @@ pub struct PlayerInfo {
 pub fn initialize_client(
     mut socket: TcpStream,
     logged_in_player_info: PlayerConnectionData,
-    character : &PlayerCharacter
+    character: &PlayerCharacter,
 ) -> Result<PlayerInfo, CommunicationError> {
     let stream = &mut socket;
 
@@ -493,7 +491,7 @@ pub fn initialize_client(
 
 pub fn send_initial_chunk_data(
     stream: &mut TcpStream,
-    world: &World, 
+    world: &World,
     player_position: Position,
 ) -> Result<(), CommunicationError> {
     // Chunk batch start
@@ -519,17 +517,14 @@ pub fn send_initial_chunk_data(
 
         let block_entities: Vec<BlockEntity> = block_entities.into_iter().flatten().collect();
 
-        let heightmap_world_surface = chunk_column.heightmap_world_surface;
-        let heightmap_motion_blocking = chunk_column.heightmap_motion_blocking;
-
         let mut heightmaps = HashMap::new();
         heightmaps.insert(
             String::from("WORLD_SURFACE"),
-            NbtTag::LongArray(chunk_column.to_minecraft(&heightmap_world_surface)),
+            NbtTag::LongArray(chunk_column.to_minecraft(&chunk_column.heightmap_world_surface)),
         );
         heightmaps.insert(
             String::from("MOTION_BLOCKING"),
-            NbtTag::LongArray(chunk_column.to_minecraft(&heightmap_motion_blocking)),
+            NbtTag::LongArray(chunk_column.to_minecraft(&chunk_column.heightmap_motion_blocking)),
         );
 
         let chunk_data = PlayClientbound::ChunkData {
