@@ -8,6 +8,7 @@ pub type Coordinate = Vector3<i32>;
 pub type Coordinate16 = Vector3<i32>;
 pub type Coordinate64 = Vector3<i32>;
 
+pub type Vector3f = Vector3<f32>;
 pub type Position = Point3<f32>;
 pub type Direction = UnitVector3<f32>;
 pub type Rotation = UnitQuaternion<f32>;

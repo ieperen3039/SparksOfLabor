@@ -1,5 +1,7 @@
 pub mod static_addresses {
-    pub const LOG_SERVER : &str = "tcp://localhost:60266";
-    pub const WORLD_SERVER : &str = "tcp://localhost:60267";
-    pub const MINECRAFT_SERVER_BIND : &str = "tcp://localhost:25565";
+    // not a zmq address
+    pub const MINECRAFT_SERVER_BIND : &str = "127.0.0.1:25567";
+    // zmq addresses
+    pub const LOG_SERVER : &str = "ipc://tmp/log_server";
+    pub const WORLD_SERVER : &str = "ipc://tmp/world_server";
 }

@@ -3,10 +3,18 @@
 
 use std::net::TcpStream;
 
+use super::login::CommunicationError;
+
 pub struct McClientConnection {
-    socket :TcpStream,
+    socket: TcpStream,
 }
 
 impl McClientConnection {
-
+    pub fn new(socket: TcpStream) -> Self {
+        McClientConnection { socket }
+    }
+    
+    pub fn send_tick(&self) -> Result<(), CommunicationError> {
+        todo!()
+    }
 }

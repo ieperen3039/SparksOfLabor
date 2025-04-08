@@ -10,6 +10,9 @@ pub struct World {
 }
 
 impl World {
+    /**
+     * Creates a world initialized with an 11x11 chunk square stone floor around y=64, with a world height of 256
+     */
     pub fn new() -> World {
         let mut chunks = HashMap::new();
 

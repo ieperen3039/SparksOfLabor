@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use crate::entities::entity_manager::EntityManager;
 use crate::game_event::{EventType, GameEvent};
+use crate::minecraft_connection::client_connection::McClientConnection;
 use crate::voxels::world::World;
 
 pub type Tick = u64;
@@ -39,10 +40,13 @@ impl GameState {
         };
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, client: McClientConnection) {
+        let mut last_loop_end = Instant::now();
+
         loop {
             self.current_tick += 1;
-            let start = Instant::now();
+
+            client.send_tick();
 
             // handle all incoming messages
             loop {
@@ -76,12 +80,13 @@ impl GameState {
             let end = Instant::now();
 
             // number of milliseconds remaining in this loop
-            let remaining_time = (start - end) - TICK_PERIOD;
+            let remaining_time = (end - last_loop_end).checked_sub(TICK_PERIOD);
 
-            // sleep at least 0 milliseconds
-            if remaining_time > Duration::ZERO {
+            if let Some(remaining_time) = remaining_time {
                 std::thread::sleep(remaining_time);
             }
+
+            last_loop_end = end;
         }
     }
 

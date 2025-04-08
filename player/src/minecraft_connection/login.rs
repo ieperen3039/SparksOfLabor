@@ -11,7 +11,7 @@ use minecraft_protocol::{
     nbt::NbtTag,
     packets::{
         self as mc_packets, play_clientbound::ClientboundPacket as PlayClientbound,
-        play_serverbound::ServerboundPacket as PlayServerbound, Array,
+        play_serverbound::ServerboundPacket as PlayServerbound, status, Array,
     },
     MinecraftPacketPart,
 };
@@ -88,7 +88,7 @@ pub fn login(stream: &mut TcpStream) -> Result<PlayerConnectionData, Communicati
         properties: Array::default(),
     };
 
-    network::send_packet(stream, login_success);
+    network::send_packet(stream, login_success)?;
     println!("LoginSuccess sent");
 
     // Receive login acknowledged
@@ -140,8 +140,7 @@ pub fn initialize_client(
 
     // Receive client informations
     let mut buffer = Vec::new();
-    let packet: mc_packets::config::ServerboundPacket =
-        network::receive_packet(stream, &mut buffer)?;
+    let packet = network::receive_packet(stream, &mut buffer)?;
     let mc_packets::config::ServerboundPacket::ClientInformations {
         locale,
         render_distance,
@@ -167,31 +166,31 @@ pub fn initialize_client(
             data: &[6, 83, 112, 105, 103, 111, 116],
         },
     };
-    network::send_packet(stream, server_agent);
+    network::send_packet(stream, server_agent)?;
     println!("PluginMessage sent");
 
     // Send feature flags
     let feature_flags = mc_packets::config::ClientboundPacket::FeatureFlags {
         features: Array::from(vec!["minecraft:vanilla"]),
     };
-    network::send_packet(stream, feature_flags);
+    network::send_packet(stream, feature_flags)?;
     println!("FeatureFlags sent");
 
     // Send registry data
     // TODO this can be used to make our own block set
-    network::send_packet_raw(stream, include_bytes!("raw/registry_codec.mc_packet"));
+    network::send_packet_raw(stream, include_bytes!("raw/registry_codec.mc_packet"))?;
     println!("RegistryData sent");
 
     // Update tags
     let update_tags = mc_packets::config::ClientboundPacket::UpdateTags {
         tags: mc_packets::Map::default(),
     };
-    network::send_packet(stream, update_tags);
+    network::send_packet(stream, update_tags)?;
     println!("UpdateTags sent");
 
     // Send finish configuration
     let finish_configuration = mc_packets::config::ClientboundPacket::FinishConfiguration;
-    network::send_packet(stream, finish_configuration);
+    network::send_packet(stream, finish_configuration)?;
     println!("FinishConfiguration sent");
 
     // Receive finish configuration
@@ -229,7 +228,7 @@ pub fn initialize_client(
         death_location: None,
         portal_cooldown: mc_packets::VarInt::from(0),
     };
-    network::send_packet(stream, join_game);
+    network::send_packet(stream, join_game)?;
     println!("JoinGame sent");
 
     // Set difficulty
@@ -237,7 +236,7 @@ pub fn initialize_client(
         difficulty: mc_components::difficulty::Difficulty::Normal,
         difficulty_locked: false,
     };
-    network::send_packet(stream, change_difficulty);
+    network::send_packet(stream, change_difficulty)?;
     println!("ChangeDifficulty sent");
 
     // Set player abilities
@@ -246,21 +245,21 @@ pub fn initialize_client(
         flying_speed: 0.05,
         field_of_view_modifier: 0.1,
     };
-    network::send_packet(stream, change_player_abilities);
+    network::send_packet(stream, change_player_abilities)?;
     println!("PlayerAbilities sent");
 
     // Set held item
     let held_item_change = PlayClientbound::SetHeldItem {
         slot: 0, // TODO should be the same as when disconnected
     };
-    network::send_packet(stream, held_item_change);
+    network::send_packet(stream, held_item_change)?;
     println!("SetHeldItem sent");
 
     // Update recipes
     let update_recipes = PlayClientbound::UpdateRecipes {
         data: mc_packets::RawBytes { data: &[0] },
     };
-    network::send_packet(stream, update_recipes);
+    network::send_packet(stream, update_recipes)?;
     println!("UpdateRecipes sent");
 
     // Entity event
@@ -268,7 +267,7 @@ pub fn initialize_client(
         entity_id: player_id as i32,
         entity_status: 28,
     };
-    network::send_packet(stream, entity_event);
+    network::send_packet(stream, entity_event)?;
     println!("EntityEvent sent");
 
     // Declare commands
@@ -276,7 +275,7 @@ pub fn initialize_client(
         count: mc_packets::VarInt(0),
         data: mc_packets::RawBytes { data: &[0] },
     };
-    network::send_packet(stream, declare_commands);
+    network::send_packet(stream, declare_commands)?;
     println!("DeclareCommands sent");
 
     // Unlock recipes
@@ -294,14 +293,14 @@ pub fn initialize_client(
             added_recipes: Array::default(),
         },
     };
-    network::send_packet(stream, unlock_recipes);
+    network::send_packet(stream, unlock_recipes)?;
     println!("UnlockRecipes sent");
 
     // Spawn player
-    let player_position = Position::new(0.0, 60.0, 0.0);
-    let player_look_dir = Rotation::identity();
+    let player_position = character.positon;
+    let player_look_dir = character.head_rotation;
 
-    let (player_yaw, player_pitch, player_roll) = player_look_dir.euler_angles();
+    let (player_yaw, player_pitch, _) = player_look_dir.euler_angles();
     let player_position_packet = PlayClientbound::PlayerPositionAndLook {
         x: player_position.x as f64,
         y: player_position.y as f64,
@@ -311,7 +310,7 @@ pub fn initialize_client(
         flags: 0x00,
         teleport_id: mc_packets::VarInt(1),
     };
-    network::send_packet(stream, player_position_packet);
+    network::send_packet(stream, player_position_packet)?;
     println!("PlayerPositionAndLook sent");
 
     // Send server metadata
@@ -320,7 +319,7 @@ pub fn initialize_client(
         icon: None,
         enforces_secure_chat: false,
     };
-    network::send_packet(stream, server_data);
+    network::send_packet(stream, server_data)?;
     println!("ServerData sent");
 
     // Spawn message
@@ -328,7 +327,7 @@ pub fn initialize_client(
         content: "{\"text\":\"Welcome to Sparks of Labor!\"}",
         overlay: false,
     };
-    network::send_packet(stream, spawn_message);
+    network::send_packet(stream, spawn_message)?;
     println!("SystemChatMessage sent");
 
     // TODO: update players info (x2)
@@ -355,7 +354,7 @@ pub fn initialize_client(
             items: entity_metadata.clone(),
         },
     };
-    network::send_packet(stream, set_entity_metadata);
+    network::send_packet(stream, set_entity_metadata)?;
     println!("SetEntityMetadata sent");
 
     // Initialize world border
@@ -369,7 +368,7 @@ pub fn initialize_client(
         warning_blocks: mc_packets::VarInt(5),
         warning_time: mc_packets::VarInt(15),
     };
-    network::send_packet(stream, world_border_init);
+    network::send_packet(stream, world_border_init)?;
     println!("InitializeWorldBorder sent");
 
     // Update time
@@ -377,7 +376,7 @@ pub fn initialize_client(
         world_age: 0,
         time_of_day: 0,
     };
-    network::send_packet(stream, time_update);
+    network::send_packet(stream, time_update)?;
     println!("UpdateTime sent");
 
     // Set spawn position
@@ -385,7 +384,7 @@ pub fn initialize_client(
         location: minecraft_protocol::packets::Position { x: 0, y: 70, z: 0 },
         angle: 0.0,
     };
-    network::send_packet(stream, set_spawn_position);
+    network::send_packet(stream, set_spawn_position)?;
     println!("SetSpawnPosition sent");
 
     // Set center chunk
@@ -393,7 +392,7 @@ pub fn initialize_client(
         chunk_x: mc_packets::VarInt(0), // TODO: should be the same as when disconnected
         chunk_z: mc_packets::VarInt(0), // TODO: should be the same as when disconnected
     };
-    network::send_packet(stream, set_center_chunk);
+    network::send_packet(stream, set_center_chunk)?;
     println!("SetCenterChunk sent");
 
     // Set inventory
@@ -403,7 +402,7 @@ pub fn initialize_client(
         slots: Array::default(),
         carried_item: mc_components::slots::Slot { item: None },
     };
-    network::send_packet(stream, set_container_content);
+    network::send_packet(stream, set_container_content)?;
     println!("SetContainerContent sent");
 
     // Set entity metadata (again)
@@ -413,7 +412,7 @@ pub fn initialize_client(
             items: entity_metadata,
         },
     };
-    network::send_packet(stream, set_entity_metadata);
+    network::send_packet(stream, set_entity_metadata)?;
     println!("SetEntityMetadata sent");
 
     // Update entity attributes
@@ -443,7 +442,7 @@ pub fn initialize_client(
         entity_id: mc_packets::VarInt::from(player_id),
         attributes: mc_packets::Map::from(entity_attributes),
     };
-    network::send_packet(stream, update_entity_attributes);
+    network::send_packet(stream, update_entity_attributes)?;
     println!("UpdateEntityAttributes sent");
 
     // Update advancements
@@ -453,7 +452,7 @@ pub fn initialize_client(
         advancements_to_remove: Array::default(),
         progress_mapping: mc_packets::Map::default(),
     };
-    network::send_packet(stream, update_advancements);
+    network::send_packet(stream, update_advancements)?;
     println!("UpdateAdvancements sent");
 
     // Set health
@@ -462,7 +461,7 @@ pub fn initialize_client(
         food: mc_packets::VarInt(20),
         food_saturation: 5.0,
     };
-    network::send_packet(stream, set_health);
+    network::send_packet(stream, set_health)?;
     println!("UpdateHealth sent");
 
     // Set experience
@@ -471,7 +470,7 @@ pub fn initialize_client(
         experience_bar: 0.0,
         total_experience: mc_packets::VarInt(0),
     };
-    network::send_packet(stream, set_experience);
+    network::send_packet(stream, set_experience)?;
     println!("SetExperience sent");
 
     Ok(PlayerInfo {
@@ -496,7 +495,7 @@ pub fn send_initial_chunk_data(
 ) -> Result<(), CommunicationError> {
     // Chunk batch start
     let chunk_data = PlayClientbound::ChunkBatchStart;
-    network::send_packet(stream, chunk_data);
+    network::send_packet(stream, chunk_data)?;
     println!("ChunkBatchStart sent");
 
     let chunks = world.get_area(player_position);
@@ -542,7 +541,7 @@ pub fn send_initial_chunk_data(
                 block_light: Array::default(),
             },
         };
-        network::send_packet(stream, chunk_data);
+        network::send_packet(stream, chunk_data)?;
     }
 
     println!("ChunkData sent");
@@ -551,7 +550,7 @@ pub fn send_initial_chunk_data(
     let chunk_data = PlayClientbound::ChunkBatchFinished {
         batch_size: mc_packets::VarInt(49),
     };
-    network::send_packet(stream, chunk_data);
+    network::send_packet(stream, chunk_data)?;
     println!("ChunkBatchFinished sent");
 
     // Get chunk batch acknoledgement
@@ -566,4 +565,20 @@ pub fn send_initial_chunk_data(
     println!("ChunkBatchReceived received");
 
     return Ok(());
+}
+
+pub fn send_status_response(stream: &mut TcpStream) -> Result<(), CommunicationError> {
+    let status_msg = status::ClientboundPacket::Response {
+        json_response: include_str!("raw/status_response.json"),
+    };
+    network::send_packet(stream, status_msg)?;
+    Ok(())
+}
+
+pub(crate) fn pong(stream: &mut TcpStream, payload: i64) -> Result<(), CommunicationError> {
+    network::send_packet(
+        stream,
+        mc_packets::status::ClientboundPacket::Pong { payload },
+    )?;
+    Ok(())
 }

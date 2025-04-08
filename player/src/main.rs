@@ -6,11 +6,11 @@ pub mod voxels;
 pub mod entities;
 pub mod game_event;
 
-use minecraft_connection::{minecraft_socket::Connection, player_character};
+use minecraft_connection::{client_connection::McClientConnection, minecraft_socket::Connection, player_character};
 use sol_address_server::static_addresses;
 use sol_log_server::log::Logger;
 use sol_network_lib::network::{self, NetworkError};
-use sol_voxel_lib::vector_alias::Position;
+use sol_voxel_lib::vector_alias::{Position, Rotation};
 use sol_world_messages::{WorldServerRep, WorldServerReq};
 
 extern crate zmq;
@@ -30,7 +30,7 @@ extern crate zmq;
 fn main() {
     let context = zmq::Context::new();
     let logger = Logger::new(
-        "Player",
+        "Player server",
         context.clone(),
         String::from(static_addresses::LOG_SERVER),
     )
@@ -43,7 +43,7 @@ fn main() {
 
     // get world data from world_server_socket
     let mut world = voxels::world::World::new();
-    let character = player_character::PlayerCharacter{ entity_id: 0, uuid: [0; 4], positon: Position::origin() };
+    let character = player_character::PlayerCharacter{ entity_id: 0, uuid: [0; 4], positon: Position::new(0.0, 60.0, 0.0), head_rotation: Rotation::identity() };
 
     // start player join
     let player_connection_data = Connection::send_player_join(connection, &character, &mut world, client_socket)
@@ -52,7 +52,7 @@ fn main() {
     logger.send_status("Player online");
 
     let mut game_state = game_loop::GameState::build(world);
-    game_state.run();
+    game_state.run(McClientConnection::new(player_connection_data.socket));
 
     logger.send_status("Player offline");
 }
