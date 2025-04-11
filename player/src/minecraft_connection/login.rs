@@ -7,7 +7,7 @@ use std::{
 
 use super::{network, player_character::PlayerCharacter};
 use minecraft_protocol::{
-    components::{self as mc_components, blocks::BlockEntity},
+    components::self as mc_components,
     nbt::NbtTag,
     packets::{
         self as mc_packets, play_clientbound::ClientboundPacket as PlayClientbound,
@@ -15,13 +15,11 @@ use minecraft_protocol::{
     },
     MinecraftPacketPart,
 };
-use sol_voxel_lib::{
-    chunk as sol_chunk,
-    vector_alias::{Position, Rotation},
-};
+use sol_voxel_lib::vector_alias::Position;
 
 #[derive(Debug)]
 pub enum CommunicationError {
+    ConnectionClosed,
     UnexpectedPackage {
         expected: String,
         received: String,
@@ -30,7 +28,8 @@ pub enum CommunicationError {
         from: mc_packets::ConnectionState,
         to: mc_packets::ConnectionState,
     },
-    SerialisationError(String),
+    SerializationError(String),
+    DeserializationError(String),
     IoError(io::Error),
 }
 
@@ -129,6 +128,7 @@ pub struct PlayerInfo {
     pub main_hand: mc_components::players::MainHand,
     pub enable_text_filtering: bool,
     pub allow_server_listing: bool,
+    pub chunks_per_tick: f32,
 }
 
 pub fn initialize_client(
@@ -485,6 +485,7 @@ pub fn initialize_client(
         main_hand,
         enable_text_filtering,
         allow_server_listing,
+        chunks_per_tick: 1.0,
     })
 }
 
@@ -492,7 +493,7 @@ pub fn send_initial_chunk_data(
     stream: &mut TcpStream,
     world: &World,
     player_position: Position,
-) -> Result<(), CommunicationError> {
+) -> Result<f32, CommunicationError> {
     // Chunk batch start
     let chunk_data = PlayClientbound::ChunkBatchStart;
     network::send_packet(stream, chunk_data)?;
@@ -500,39 +501,27 @@ pub fn send_initial_chunk_data(
 
     let chunks = world.get_area(player_position);
     for chunk_column in chunks {
-        let results = chunk_column
-            .chunk_sections
-            .iter()
-            .map(sol_chunk::Chunk16::to_minecraft)
-            .map(|(chunks, _, block_entities)| (chunks, block_entities))
-            .unzip();
-
-        let chunk_sections = results.0;
-        let block_entities: Vec<Vec<BlockEntity>> = results.1;
-
-        let chunk_sections_serialized: Vec<u8> =
-            mc_components::chunk::Chunk::into_data(chunk_sections)
-                .map_err(|e| CommunicationError::SerialisationError(String::from(e)))?;
-
-        let block_entities: Vec<BlockEntity> = block_entities.into_iter().flatten().collect();
+        let serialized = chunk_column
+            .to_minecraft()
+            .map_err(|e| CommunicationError::SerializationError(String::from(e)))?;
 
         let mut heightmaps = HashMap::new();
         heightmaps.insert(
             String::from("WORLD_SURFACE"),
-            NbtTag::LongArray(chunk_column.to_minecraft(&chunk_column.heightmap_world_surface)),
+            NbtTag::LongArray(serialized.heightmap_world_surface),
         );
         heightmaps.insert(
             String::from("MOTION_BLOCKING"),
-            NbtTag::LongArray(chunk_column.to_minecraft(&chunk_column.heightmap_motion_blocking)),
+            NbtTag::LongArray(serialized.heightmap_motion_blocking),
         );
 
         let chunk_data = PlayClientbound::ChunkData {
             value: mc_components::chunk::ChunkData {
-                chunk_x: chunk_column.chunk_x_16,
-                chunk_z: chunk_column.chunk_y_16,
+                chunk_x: serialized.chunk_x_16,
+                chunk_z: serialized.chunk_y_16,
                 heightmaps: NbtTag::Compound(heightmaps),
-                data: Array::from(chunk_sections_serialized),
-                block_entities: Array::from(block_entities),
+                data: Array::from(serialized.chunk_sections),
+                block_entities: Array::from(serialized.block_entities),
                 sky_light_mask: Array::default(),
                 block_light_mask: Array::default(),
                 empty_sky_light_mask: Array::default(),
@@ -564,7 +553,7 @@ pub fn send_initial_chunk_data(
     };
     println!("ChunkBatchReceived received");
 
-    return Ok(());
+    Ok(chunks_per_tick)
 }
 
 pub fn send_status_response(stream: &mut TcpStream) -> Result<(), CommunicationError> {

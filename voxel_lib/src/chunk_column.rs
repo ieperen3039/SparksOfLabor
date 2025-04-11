@@ -1,20 +1,63 @@
+use crate::chunk16::Chunk16;
+use crate::vector_alias::ICoordinate;
+use crate::voxel::VoxelRef;
+use minecraft_protocol::components::blocks::BlockEntity;
 
-use crate::chunk::Chunk16;
-
+use minecraft_protocol::{
+    components::{blocks as mc_blocks, chunk as mc_chunk},
+    ids::blocks as mc_ids,
+};
 type Heightmap = [[u16; 16]; 16];
 
 pub enum WorldCommand {}
 
 pub struct ChunkColumn {
+    chunk_x_16: i32,
+    chunk_y_16: i32,
+    chunk_sections: Vec<Chunk16>,
+    heightmap_motion_blocking: Heightmap,
+    heightmap_world_surface: Heightmap,
+}
+
+pub struct ChunkColumnSerialized {
     pub chunk_x_16: i32,
     pub chunk_y_16: i32,
-    pub chunk_sections: Vec<Chunk16>,
-    pub heightmap_motion_blocking: Heightmap,
-    pub heightmap_world_surface: Heightmap,
+    pub chunk_sections: Vec<u8>,
+    pub block_entities: Vec<BlockEntity>,
+    pub heightmap_motion_blocking: Vec<i64>,
+    pub heightmap_world_surface: Vec<i64>,
 }
 
 impl ChunkColumn {
-    pub fn to_minecraft(&self, heightmap : &Heightmap) -> Vec<i64> {
+    pub fn to_minecraft(&self) -> Result<ChunkColumnSerialized, &'static str> {
+        let results = self
+            .chunk_sections
+            .iter()
+            .map(Chunk16::to_minecraft)
+            .map(|(chunks, _, block_entities)| (chunks, block_entities))
+            .unzip();
+
+        let chunk_sections = results.0;
+        let block_entities: Vec<Vec<BlockEntity>> = results.1;
+
+        let chunk_sections_serialized: Vec<u8> = mc_chunk::Chunk::into_data(chunk_sections)?;
+
+        let block_entities: Vec<BlockEntity> = block_entities.into_iter().flatten().collect();
+
+        let world_surface = self.heightmap_to_minecraft(&self.heightmap_world_surface);
+        let motion_blocking = self.heightmap_to_minecraft(&self.heightmap_motion_blocking);
+
+        Ok(ChunkColumnSerialized {
+            chunk_x_16,
+            chunk_y_16,
+            chunk_sections: chunk_sections_serialized,
+            block_entities,
+            heightmap_motion_blocking: motion_blocking,
+            heightmap_world_surface: world_surface,
+        })
+    }
+
+    fn heightmap_to_minecraft(&self, heightmap: &Heightmap) -> Vec<i64> {
         let world_height = self.chunk_sections.len() * 16;
         let bits_per_element = usize::BITS - world_height.leading_zeros();
 
@@ -39,7 +82,7 @@ impl ChunkColumn {
         return result;
     }
 
-    pub fn from_minecraft(&self, byte_array : &Vec<i64>) -> Heightmap {
+    fn heightmap_from_minecraft(&self, byte_array: &Vec<i64>) -> Heightmap {
         // could be a constant
         let world_height = self.chunk_sections.len() * 16;
         let bits_per_element = usize::BITS - world_height.leading_zeros();
@@ -63,8 +106,27 @@ impl ChunkColumn {
             }
         }
 
-        assert!(byte_array.len() == byte_index);
+        assert_eq!(byte_array.len(), byte_index);
 
         return heightmap;
+    }
+
+    pub fn for_each<Action: FnMut(&ICoordinate, VoxelRef)>(&self, mut action: Action) {
+        // I regret nothing
+        for y16 in 0..24usize {
+            let chunk16 = &self.chunk_sections[y16];
+            let index_vector_16_base = ICoordinate::new(0, y16 * 16, 0);
+            for y in 0..16usize {
+                for z in 0..16usize {
+                    for x in 0..16usize {
+                        let index_vector = ICoordinate::new(x, y, z);
+                        let voxel = chunk16.get_voxel_internal(index_vector);
+
+                        let coord = index_vector_16_base + index_vector;
+                        action(&coord, voxel);
+                    }
+                }
+            }
+        }
     }
 }
