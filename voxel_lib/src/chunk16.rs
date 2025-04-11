@@ -4,10 +4,8 @@ use minecraft_protocol::components::blocks::BlockEntity;
 use serde::{Deserialize, Serialize};
 
 use crate::palette::Palette;
-use crate::vector_alias::{
-    coordinate16_to_absolute, coordinate64_to_coordinate16, Coordinate16, Coordinate64,
-};
-use crate::voxel::{self, Voxel, VoxelRef};
+use crate::vector_alias::{Coordinate16, Coordinate64};
+use crate::voxel::{Voxel, VoxelRef};
 use crate::{
     vector_alias::{Coordinate, ICoordinate},
     voxel_errors::VoxelIndexError,
@@ -62,12 +60,6 @@ impl ChunkB32Entry {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Chunk64 {
-    voxels: [[[Chunk16; 4]; 4]; 4],
-    zero_coordinate: Coordinate,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct Chunk16 {
     // NOTE: [y][z][x] where y is height
     grid: Chunk16Grid,
@@ -92,120 +84,8 @@ enum Chunk16Grid {
     B0,
 }
 
-fn to_internal(
-    coord: Coordinate,
-    zero_coord: Coordinate,
-    internal_step: i32,
-    elements_in_grid: i32,
-) -> Option<ICoordinate> {
-    let relative_coord = coord - zero_coord;
-    let internal_coord = relative_coord / internal_step;
-
-    if internal_coord.x < 0 {
-        return None;
-    }
-    if internal_coord.x > (elements_in_grid * elements_in_grid) {
-        return None;
-    }
-    if internal_coord.y < 0 {
-        return None;
-    }
-    if internal_coord.y > (elements_in_grid * elements_in_grid) {
-        return None;
-    }
-    if internal_coord.z < 0 {
-        return None;
-    }
-    if internal_coord.z > (elements_in_grid * elements_in_grid) {
-        return None;
-    }
-
-    Some(ICoordinate::new(
-        internal_coord.x as usize,
-        internal_coord.y as usize,
-        internal_coord.z as usize,
-    ))
-}
-
-fn to_internal_unchecked(
-    coord: Coordinate,
-    zero_coord: Coordinate,
-    internal_step: i32,
-) -> ICoordinate {
-    let relative_coord = coord - zero_coord;
-    let internal_coord = relative_coord / internal_step;
-    ICoordinate::new(
-        internal_coord.x as usize,
-        internal_coord.y as usize,
-        internal_coord.z as usize,
-    )
-}
-
 fn from_internal(coord: ICoordinate, zero_coord: Coordinate, internal_step: i32) -> Coordinate {
     zero_coord + (Coordinate::new(coord.x as i32, coord.y as i32, coord.z as i32) * internal_step)
-}
-
-impl Chunk64 {
-    pub fn new(zero_coordinate: Coordinate64, fill_value: mc_ids::Block) -> Self {
-        let coord16 = coordinate64_to_coordinate16(zero_coordinate);
-
-        let voxels = array::from_fn(|y| {
-            array::from_fn(|z| {
-                array::from_fn(|x| {
-                    Chunk16::new(coord16 + Coordinate16::new(x as i32, y as i32, z as i32), fill_value)
-                })
-            })
-        });
-
-        Chunk64 {
-            voxels,
-            zero_coordinate,
-        }
-    }
-
-    pub fn get_chunk16<'s>(&'s self, coord: Coordinate) -> Result<&'s Chunk16, VoxelIndexError> {
-        let internal_coord = to_internal(coord, self.zero_coordinate, 16, 4)
-            .ok_or(VoxelIndexError { coordinate: coord })?;
-
-        Ok(self.get_chunk16_internal_unchecked(internal_coord))
-    }
-
-    fn get_chunk16_internal_unchecked(&self, internal_coord: ICoordinate) -> &Chunk16 {
-        &self.voxels[internal_coord.x][internal_coord.y][internal_coord.z]
-    }
-
-    pub fn get_coordinate_from_index(&self, block_index: ICoordinate) -> Coordinate {
-        let zero_coord = self.zero_coordinate;
-        zero_coord
-            + Coordinate::new(
-                block_index.x as i32,
-                block_index.y as i32,
-                block_index.z as i32,
-            )
-    }
-
-    pub fn for_each<Action: FnMut(&ICoordinate, VoxelRef)>(&self, mut action: Action) {
-        // I regret nothing
-        for y16 in 0..4usize {
-            for z16 in 0..4usize {
-                for x16 in 0..4usize {
-                    let chunk16 = &self.voxels[y16][z16][x16];
-                    let index_vector_16_base = ICoordinate::new(x16, y16, z16) * 16;
-                    for y in 0..16usize {
-                        for z in 0..16usize {
-                            for x in 0..16usize {
-                                let index_vector = ICoordinate::new(x, y, z);
-                                let voxel = chunk16.get_voxel_internal(index_vector);
-
-                                let coord = index_vector_16_base + index_vector;
-                                action(&coord, voxel);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 impl Chunk16 {
@@ -217,14 +97,23 @@ impl Chunk16 {
             grid: Chunk16Grid::B0,
             palette: Palette::fill(fill_value.id()),
             biomes: Default::default(),
-            zero_coordinate: coordinate16_to_absolute(location),
+            zero_coordinate: Coordinate::from(location),
             num_non_air_blocks: if is_air { 0 } else { 16 * 16 * 16 },
         }
     }
 
     pub fn get_voxel(&self, coord: Coordinate) -> Result<VoxelRef, VoxelIndexError> {
-        let internal_coord = to_internal(coord, self.zero_coordinate, 16, 16)
-            .ok_or(VoxelIndexError { coordinate: coord })?;
+        let internal_coord = ICoordinate::from(coord - self.zero_coordinate);
+
+        if internal_coord.x < 0
+            || internal_coord.x > 16
+            || internal_coord.y < 0
+            || internal_coord.y > 16
+            || internal_coord.z < 0
+            || internal_coord.z > 16
+        {
+            return Err(VoxelIndexError { coordinate: coord });
+        }
 
         Ok(self.get_voxel_internal(internal_coord))
     }
@@ -483,7 +372,7 @@ impl Chunk16 {
                 blocks,
                 biomes: mc_chunk::PalettedData::Single { value: 0 },
             },
-            sol_chunk.get_zero_coordinate() / 16,
+            Coordinate16::containing_coord(&sol_chunk.get_zero_coordinate()),
             block_entities,
         );
     }
@@ -507,7 +396,7 @@ impl Chunk16 {
             grid,
             palette: sol_palette,
             biomes: [[[0; 4]; 4]; 4],
-            zero_coordinate: coordinate16_to_absolute(position),
+            zero_coordinate: Coordinate::from(position),
             num_non_air_blocks: 0,
         };
     }
@@ -620,7 +509,7 @@ impl Chunk16 {
             grid: Chunk16Grid::B32(grid),
             palette: Palette::new(),
             biomes: [[[0; 4]; 4]; 4],
-            zero_coordinate: coordinate16_to_absolute(position),
+            zero_coordinate: Coordinate::from(position),
             num_non_air_blocks: 0,
         };
     }
