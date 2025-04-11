@@ -1,4 +1,4 @@
-pub mod minecraft_socket;
+pub mod player_connect_handler;
 pub mod network;
 pub mod player_character;
 mod login;

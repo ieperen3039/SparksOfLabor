@@ -10,7 +10,10 @@ pub type Coordinate = Vector3<i32>;
 pub struct Coordinate16(Vector3<i32>);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct Coordinate64(Vector3<i32>);
+pub struct ChunkColumnCoordinate {
+    pub x: i32,
+    pub z: i32,
+}
 
 pub type Vector3f = Vector3<f32>;
 pub type Position = Point3<f32>;
@@ -34,7 +37,7 @@ impl Coordinate16 {
         Coordinate16(self.0 + Vector3::new(x, y, z))
     }
 
-    pub fn containing_pos(pos : &Position) -> Coordinate16 {
+    pub fn containing_position(pos: &Position) -> Coordinate16 {
         Self::new(
             (pos.x / 16.0) as i32,
             (pos.y / 16.0) as i32,
@@ -42,56 +45,39 @@ impl Coordinate16 {
         )
     }
 
-    pub fn containing_coord(coord : &Coordinate) -> Coordinate16 {
+    pub fn containing_coord(coord: &Coordinate) -> Coordinate16 {
         Self::new(coord.x / 16, coord.y / 16, coord.z / 16)
     }
 }
 
-impl Coordinate64 {
-    pub fn new(x: i32, y: i32, z: i32) -> Coordinate64 {
-        Coordinate64(Vector3::new(x, y, z))
+impl ChunkColumnCoordinate {
+    pub fn containing_position(pos: &Position) -> ChunkColumnCoordinate {
+        Self {
+            x: (pos.x / 16.0) as i32,
+            z: (pos.z / 16.0) as i32,
+        }
     }
 
-    pub fn inner(&self) -> Vector3<i32> {
-        self.0
-    }
-
-    pub fn add(self, x: i32, y: i32, z: i32) -> Self {
-        Coordinate64(self.0 + Vector3::new(x, y, z))
-    }
-
-    pub fn containing_position(pos : &Position) -> Coordinate64 {
-        Self::new(
-            (pos.x / 64.0) as i32,
-            (pos.y / 64.0) as i32,
-            (pos.z / 64.0) as i32,
-        )
-    }
-
-    pub fn containing_coord(coord : &Coordinate) -> Coordinate64 {
-        Self::new(coord.x / 64, coord.y / 64, coord.z / 64)
-    }
-
-    pub fn containing_coord16(coord : &Coordinate16) -> Coordinate64 {
-        Self::new(coord.0.x / 16, coord.0.y / 16, coord.0.z / 16)
+    pub fn containing_coord(coord: &Coordinate) -> ChunkColumnCoordinate {
+        Self {
+            x: coord.x / 16,
+            z: coord.z / 16,
+        }
     }
 }
 
 impl From<Coordinate16> for Coordinate {
-    fn from(coord: Coordinate16) -> Self {
+    fn from(coord: Coordinate16) -> Coordinate {
         coord.0.mul(16)
     }
 }
 
-impl From<Coordinate64> for Coordinate {
-    fn from(coord: Coordinate64) -> Self {
-        coord.0.mul(64)
-    }
-}
-
-impl From<Coordinate64> for Coordinate16 {
-    fn from(coord: Coordinate64) -> Self {
-        Coordinate16(coord.0.mul(16))
+impl From<Coordinate16> for ChunkColumnCoordinate {
+    fn from(coord: Coordinate16) -> ChunkColumnCoordinate {
+        ChunkColumnCoordinate {
+            x: coord.0.x,
+            z: coord.0.z,
+        }
     }
 }
 

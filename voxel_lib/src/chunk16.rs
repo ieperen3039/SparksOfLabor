@@ -1,10 +1,8 @@
-use std::array;
-
 use minecraft_protocol::components::blocks::BlockEntity;
 use serde::{Deserialize, Serialize};
 
 use crate::palette::Palette;
-use crate::vector_alias::{Coordinate16, Coordinate64};
+use crate::vector_alias::Coordinate16;
 use crate::voxel::{Voxel, VoxelRef};
 use crate::{
     vector_alias::{Coordinate, ICoordinate},
@@ -102,19 +100,24 @@ impl Chunk16 {
         }
     }
 
-    pub fn get_voxel(&self, coord: Coordinate) -> Result<VoxelRef, VoxelIndexError> {
-        let internal_coord = ICoordinate::from(coord - self.zero_coordinate);
+    fn to_internal(&self, coord: Coordinate) -> Result<ICoordinate, VoxelIndexError> {
+        let relative_coord = coord - self.zero_coordinate;
 
-        if internal_coord.x < 0
-            || internal_coord.x > 16
-            || internal_coord.y < 0
-            || internal_coord.y > 16
-            || internal_coord.z < 0
-            || internal_coord.z > 16
+        if relative_coord.x < 0
+            || relative_coord.x > 16
+            || relative_coord.y < 0
+            || relative_coord.y > 16
+            || relative_coord.z < 0
+            || relative_coord.z > 16
         {
             return Err(VoxelIndexError { coordinate: coord });
         }
 
+        Ok(ICoordinate::new(relative_coord.x as usize, relative_coord.y as usize, relative_coord.z as usize))
+    }
+
+    pub fn get_voxel(&self, coord: Coordinate) -> Result<VoxelRef, VoxelIndexError> {
+        let internal_coord = self.to_internal(coord)?;
         Ok(self.get_voxel_internal(internal_coord))
     }
 
@@ -147,6 +150,11 @@ impl Chunk16 {
         };
 
         return self.palette.get(id);
+    }
+
+    pub fn set_voxel(&mut self, coord: Coordinate, voxel: Voxel) -> Result<(), VoxelIndexError> {
+        let internal_coord = self.to_internal(coord)?;
+        Ok(self.set_voxel_internal(internal_coord, voxel))
     }
 
     pub fn set_voxel_internal(&mut self, coord: ICoordinate, voxel: Voxel) {

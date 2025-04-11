@@ -40,13 +40,11 @@ impl GameState {
         };
     }
 
-    pub fn run(&mut self, client: McClientConnection) {
+    pub fn run(&mut self) {
         let mut last_loop_end = Instant::now();
 
         loop {
             self.current_tick += 1;
-
-            client.send_tick();
 
             // handle all incoming messages
             loop {

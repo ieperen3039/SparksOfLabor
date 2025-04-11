@@ -3,14 +3,16 @@ use crate::vector_alias::ICoordinate;
 use crate::voxel::VoxelRef;
 use minecraft_protocol::components::blocks::BlockEntity;
 
-use minecraft_protocol::{
-    components::{blocks as mc_blocks, chunk as mc_chunk},
-    ids::blocks as mc_ids,
-};
+use minecraft_protocol::components::chunk as mc_chunk;
+use serde::{Deserialize, Serialize};
+
+const NUM_CHUNK_SECTIONS_PER_COLUMN : usize = 16;
+
 type Heightmap = [[u16; 16]; 16];
 
 pub enum WorldCommand {}
 
+#[derive(Serialize, Deserialize)]
 pub struct ChunkColumn {
     chunk_x_16: i32,
     chunk_y_16: i32,
@@ -29,6 +31,17 @@ pub struct ChunkColumnSerialized {
 }
 
 impl ChunkColumn {
+    pub fn new(chunk_x_16: i32, chunk_y_16: i32, sections: Vec<Chunk16>) -> ChunkColumn {
+        Self {
+            chunk_x_16,
+            chunk_y_16,
+            chunk_sections: sections,
+            // TODO check chunk16s for air
+            heightmap_motion_blocking: [[0; 16]; 16],
+            heightmap_world_surface: [[0; 16]; 16],
+        }
+    }
+
     pub fn to_minecraft(&self) -> Result<ChunkColumnSerialized, &'static str> {
         let results = self
             .chunk_sections
@@ -48,8 +61,8 @@ impl ChunkColumn {
         let motion_blocking = self.heightmap_to_minecraft(&self.heightmap_motion_blocking);
 
         Ok(ChunkColumnSerialized {
-            chunk_x_16,
-            chunk_y_16,
+            chunk_x_16 : self.chunk_x_16,
+            chunk_y_16 : self.chunk_x_16,
             chunk_sections: chunk_sections_serialized,
             block_entities,
             heightmap_motion_blocking: motion_blocking,
@@ -58,7 +71,7 @@ impl ChunkColumn {
     }
 
     fn heightmap_to_minecraft(&self, heightmap: &Heightmap) -> Vec<i64> {
-        let world_height = self.chunk_sections.len() * 16;
+        let world_height = NUM_CHUNK_SECTIONS_PER_COLUMN * 16;
         let bits_per_element = usize::BITS - world_height.leading_zeros();
 
         let mut result = Vec::new();

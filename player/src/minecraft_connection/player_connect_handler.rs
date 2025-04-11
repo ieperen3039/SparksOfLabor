@@ -13,11 +13,11 @@ use super::{
     player_character::PlayerCharacter,
 };
 
-const CLIENT_CONNECTION_TIMEOUT: Duration = Duration::from_millis(50);
+const CLIENT_CONNECTION_TIMEOUT: Duration = Duration::from_millis(500);
 
-pub struct Connection {}
+pub struct PLayerConnectHandler {}
 
-impl Connection {
+impl PLayerConnectHandler {
     pub fn await_connect() -> Result<(PlayerConnectionData, TcpStream), CommunicationError> {
         loop {
             let listener = TcpListener::bind(static_addresses::MINECRAFT_SERVER_BIND)
@@ -87,8 +87,9 @@ impl Connection {
         // player is spawning
 
         let mut player_info = login::initialize_client(socket, player, character)?;
-        login::send_initial_chunk_data(&mut player_info.socket, world, character.positon)?;
+        let chunks_per_tick = login::send_initial_chunk_data(&mut player_info.socket, world, character.positon)?;
+        player_info.chunks_per_tick = chunks_per_tick;
 
-        return Ok(player_info);
+        Ok(player_info)
     }
 }

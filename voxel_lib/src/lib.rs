@@ -10,4 +10,3 @@ pub mod vector_alias;
 pub mod voxel_errors;
 mod palette;
 pub mod chunk_column;
-pub mod chunk64;
