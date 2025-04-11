@@ -1,5 +1,5 @@
 use std::{
-    net::{SocketAddr, TcpListener, TcpStream},
+    net::{TcpListener, TcpStream},
     time::Duration,
 };
 
@@ -64,7 +64,7 @@ impl PLayerConnectHandler {
         loop {
             let packet: mc_packets::status::ServerboundPacket =
                 network::receive_packet(stream, &mut buffer)?;
-                
+
             match packet {
                 mc_packets::status::ServerboundPacket::Request => {
                     login::send_status_response(stream)?;
@@ -87,7 +87,8 @@ impl PLayerConnectHandler {
         // player is spawning
 
         let mut player_info = login::initialize_client(socket, player, character)?;
-        let chunks_per_tick = login::send_initial_chunk_data(&mut player_info.socket, world, character.positon)?;
+        let chunks_per_tick =
+            login::send_initial_chunk_data(&mut player_info.socket, world, character.positon)?;
         player_info.chunks_per_tick = chunks_per_tick;
 
         Ok(player_info)

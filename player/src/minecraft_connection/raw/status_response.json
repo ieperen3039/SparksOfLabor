@@ -1,13 +1,13 @@
 {
-    "version": {
-        "name": "1.20.2",
-        "protocol": 764
-    },
-    "players": {
-        "max": 1000000,
-        "online": 0
-    },
-    "description": {
-        "text": "Sparks of Labor"
-    }
+  "version": {
+    "name": "1.20.2",
+    "protocol": 764
+  },
+  "players": {
+    "max": 1000000,
+    "online": 0
+  },
+  "description": {
+    "text": "Sparks of Labor"
+  }
 }

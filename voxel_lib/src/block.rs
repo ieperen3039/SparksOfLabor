@@ -1,10 +1,10 @@
 use core::panic;
 use std::fmt::Debug;
 
-use serde::{Deserialize, Serialize};
 use minecraft_protocol::ids::blocks::Block;
+use serde::{Deserialize, Serialize};
 
-use crate::{vector_alias::AxisDirection};
+use crate::vector_alias::AxisDirection;
 
 const BITS_BLOCK_TYPE_START: u32 = 0;
 const NUM_BITS_BLOCK_TYPE: u32 = 18; // 2^18 = 262144 types
@@ -24,7 +24,7 @@ pub struct BaseVoxel {
 
 impl BaseVoxel {
     pub fn new(block_type: Block, variant: u32, orientation: VoxelOrientation) -> BaseVoxel {
-        let mut voxel = BaseVoxel { byte : 0 };
+        let mut voxel = BaseVoxel { byte: 0 };
         voxel.set_type(block_type);
         voxel.set_variant(variant);
         voxel.set_orientation(orientation);
@@ -32,11 +32,9 @@ impl BaseVoxel {
     }
 
     pub fn get_type(&self) -> Block {
-        Block::from_id(
-            self.get_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE),
-        )
-        // TODO resiliance to corruption and manipulation
-        .expect("unknown block type value")
+        Block::from_id(self.get_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE))
+            // TODO resiliance to corruption and manipulation
+            .expect("unknown block type value")
     }
 
     pub fn get_variant(&self) -> u32 {
@@ -145,7 +143,10 @@ impl VoxelOrientation {
     const NUM_BITS_X: u32 = 4; // one of 6
 
     pub fn new() -> VoxelOrientation {
-        VoxelOrientation { x_dir : AxisDirection::PosX, z_dir: AxisDirection::PosZ }
+        VoxelOrientation {
+            x_dir: AxisDirection::PosX,
+            z_dir: AxisDirection::PosZ,
+        }
     }
 
     fn axis_from_u32(axis_id: u32) -> AxisDirection {

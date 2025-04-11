@@ -3,8 +3,8 @@ use std::{
     net::TcpStream,
 };
 
-use minecraft_protocol::{packets as mc_packets, MinecraftPacketPart};
 use crate::minecraft_connection::login::CommunicationError;
+use minecraft_protocol::{packets as mc_packets, MinecraftPacketPart};
 
 pub fn send_packet<'a>(
     stream: &mut TcpStream,
@@ -60,7 +60,9 @@ pub fn receive_packet_raw(stream: &mut TcpStream) -> Result<Vec<u8>, Communicati
         }
 
         if length.len() >= 5 {
-            return Err(CommunicationError::DeserializationError(String::from("invalid length field")));
+            return Err(CommunicationError::DeserializationError(String::from(
+                "invalid length field",
+            )));
         }
     }
 

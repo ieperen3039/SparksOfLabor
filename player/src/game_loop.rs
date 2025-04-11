@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 
 use crate::entities::entity_manager::EntityManager;
 use crate::game_event::{EventType, GameEvent};
-use crate::minecraft_connection::client_connection::McClientConnection;
 use crate::voxels::world::World;
 
 pub type Tick = u64;

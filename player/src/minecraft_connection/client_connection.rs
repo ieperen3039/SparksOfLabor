@@ -2,12 +2,10 @@
 // main function is to abstract the mc protocol for the game loop
 
 use super::login::CommunicationError;
-use crate::game_event::GameEvent;
 use crate::game_loop::GameCommand;
 use crate::minecraft_connection::network;
 use minecraft_protocol::packets::play_clientbound::ClientboundPacket;
 use minecraft_protocol::packets::play_serverbound::ServerboundPacket;
-use std::io::Read;
 use std::net::TcpStream;
 use std::sync::mpsc;
 
@@ -28,8 +26,7 @@ impl McClientConnection {
         loop {
             let mut buffer = Vec::with_capacity(1);
 
-            let packet =
-                network::receive_packet(&mut self.socket, &mut buffer);
+            let packet = network::receive_packet(&mut self.socket, &mut buffer);
 
             let packet = match packet {
                 Ok(p) => p,
@@ -37,7 +34,7 @@ impl McClientConnection {
                 Err(err) => {
                     println!("Error while receiving message: {err:?}");
                     continue;
-                }
+                },
             };
 
             println!("Received {packet:?}");

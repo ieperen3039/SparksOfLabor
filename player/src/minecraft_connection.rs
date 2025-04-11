@@ -1,5 +1,5 @@
-pub mod player_connect_handler;
+pub mod client_connection;
+mod login;
 pub mod network;
 pub mod player_character;
-mod login;
-pub mod client_connection;
+pub mod player_connect_handler;

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::mpsc::{Receiver, Sender},
-};
+use std::collections::HashMap;
 
 use sol_voxel_lib::chunk16::Chunk16;
 use sol_voxel_lib::{chunk_column::ChunkColumn, vector_alias::*};

@@ -7,7 +7,7 @@ use std::{
 
 use super::{network, player_character::PlayerCharacter};
 use minecraft_protocol::{
-    components::self as mc_components,
+    components as mc_components,
     nbt::NbtTag,
     packets::{
         self as mc_packets, play_clientbound::ClientboundPacket as PlayClientbound,

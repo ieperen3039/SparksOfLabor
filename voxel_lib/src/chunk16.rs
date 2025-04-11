@@ -113,7 +113,11 @@ impl Chunk16 {
             return Err(VoxelIndexError { coordinate: coord });
         }
 
-        Ok(ICoordinate::new(relative_coord.x as usize, relative_coord.y as usize, relative_coord.z as usize))
+        Ok(ICoordinate::new(
+            relative_coord.x as usize,
+            relative_coord.y as usize,
+            relative_coord.z as usize,
+        ))
     }
 
     pub fn get_voxel(&self, coord: Coordinate) -> Result<VoxelRef, VoxelIndexError> {

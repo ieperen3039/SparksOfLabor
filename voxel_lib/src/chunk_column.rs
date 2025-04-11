@@ -6,7 +6,7 @@ use minecraft_protocol::components::blocks::BlockEntity;
 use minecraft_protocol::components::chunk as mc_chunk;
 use serde::{Deserialize, Serialize};
 
-const NUM_CHUNK_SECTIONS_PER_COLUMN : usize = 16;
+const NUM_CHUNK_SECTIONS_PER_COLUMN: usize = 16;
 
 type Heightmap = [[u16; 16]; 16];
 
@@ -61,8 +61,8 @@ impl ChunkColumn {
         let motion_blocking = self.heightmap_to_minecraft(&self.heightmap_motion_blocking);
 
         Ok(ChunkColumnSerialized {
-            chunk_x_16 : self.chunk_x_16,
-            chunk_y_16 : self.chunk_x_16,
+            chunk_x_16: self.chunk_x_16,
+            chunk_y_16: self.chunk_x_16,
             chunk_sections: chunk_sections_serialized,
             block_entities,
             heightmap_motion_blocking: motion_blocking,

@@ -1,4 +1,4 @@
-use crate::{vector_alias::*, block};
+use crate::{block, vector_alias::*};
 use simple_error::SimpleError;
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl std::fmt::Display for VoxelIndexError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             formatter,
-            "Requested coordiate ({}, {}, {}) ",
+            "Requested coordinate ({}, {}, {}) ",
             self.coordinate.x, self.coordinate.y, self.coordinate.z
         )
     }
@@ -36,7 +36,7 @@ impl std::fmt::Display for UnknownBlockTypeError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             formatter,
-            "Requested coordiate ({}, {}, {}) ",
+            "Unknown block type at ({}, {}, {}) ",
             self.coordinate.x, self.coordinate.y, self.coordinate.z
         )
     }

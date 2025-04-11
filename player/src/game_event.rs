@@ -11,7 +11,7 @@ pub struct GameEvent {
 
 pub enum EventType {
     VoxelUpdate(Position),
-    EntityUpdate{ entity_id : u32 }
+    EntityUpdate { entity_id: u32 },
 }
 
 impl Ord for GameEvent {
