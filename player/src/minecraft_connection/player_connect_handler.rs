@@ -88,7 +88,7 @@ impl PLayerConnectHandler {
 
         let mut player_info = login::initialize_client(socket, player, character)?;
         let chunks_per_tick =
-            login::send_initial_chunk_data(&mut player_info.socket, world, character.positon)?;
+            login::send_initial_chunk_data(&mut player_info.socket, world, character.position)?;
         player_info.chunks_per_tick = chunks_per_tick;
 
         Ok(player_info)

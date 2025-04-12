@@ -297,7 +297,7 @@ pub fn initialize_client(
     println!("UnlockRecipes sent");
 
     // Spawn player
-    let player_position = character.positon;
+    let player_position = character.position;
     let player_look_dir = character.head_rotation;
 
     let (player_yaw, player_pitch, _) = player_look_dir.euler_angles();
@@ -518,7 +518,7 @@ pub fn send_initial_chunk_data(
         let chunk_data = PlayClientbound::ChunkData {
             value: mc_components::chunk::ChunkData {
                 chunk_x: serialized.chunk_x_16,
-                chunk_z: serialized.chunk_y_16,
+                chunk_z: serialized.chunk_z_16,
                 heightmaps: NbtTag::Compound(heightmaps),
                 data: Array::from(serialized.chunk_sections),
                 block_entities: Array::from(serialized.block_entities),

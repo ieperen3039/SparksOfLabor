@@ -51,6 +51,10 @@ impl Coordinate16 {
 }
 
 impl ChunkColumnCoordinate {
+    pub fn add(self, x: i32, z: i32) -> Self {
+        ChunkColumnCoordinate { x: x + self.x, z: z + self.z }
+    }
+
     pub fn containing_position(pos: &Position) -> ChunkColumnCoordinate {
         Self {
             x: (pos.x / 16.0) as i32,

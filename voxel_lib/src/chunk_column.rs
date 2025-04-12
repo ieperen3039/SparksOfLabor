@@ -1,12 +1,15 @@
 use crate::chunk16::Chunk16;
-use crate::vector_alias::ICoordinate;
+use crate::vector_alias::{Coordinate16, ICoordinate};
 use crate::voxel::VoxelRef;
 use minecraft_protocol::components::blocks::BlockEntity;
+use std::array::from_fn;
 
 use minecraft_protocol::components::chunk as mc_chunk;
 use serde::{Deserialize, Serialize};
 
-const NUM_CHUNK_SECTIONS_PER_COLUMN: usize = 16;
+// the protocol enforces 24 chunks per column.
+// we may try to change this, but maybe the java client does not support anything else
+pub const NUM_CHUNK_SECTIONS_PER_COLUMN: usize = 24;
 
 type Heightmap = [[u16; 16]; 16];
 
@@ -15,15 +18,15 @@ pub enum WorldCommand {}
 #[derive(Serialize, Deserialize)]
 pub struct ChunkColumn {
     chunk_x_16: i32,
-    chunk_y_16: i32,
-    chunk_sections: Vec<Chunk16>,
+    chunk_z_16: i32,
+    chunk_sections: [Chunk16; NUM_CHUNK_SECTIONS_PER_COLUMN],
     heightmap_motion_blocking: Heightmap,
     heightmap_world_surface: Heightmap,
 }
 
 pub struct ChunkColumnSerialized {
     pub chunk_x_16: i32,
-    pub chunk_y_16: i32,
+    pub chunk_z_16: i32,
     pub chunk_sections: Vec<u8>,
     pub block_entities: Vec<BlockEntity>,
     pub heightmap_motion_blocking: Vec<i64>,
@@ -31,15 +34,24 @@ pub struct ChunkColumnSerialized {
 }
 
 impl ChunkColumn {
-    pub fn new(chunk_x_16: i32, chunk_y_16: i32, sections: Vec<Chunk16>) -> ChunkColumn {
+    pub fn new(chunk_x_16: i32, chunk_z_16: i32) -> ChunkColumn {
         Self {
             chunk_x_16,
-            chunk_y_16,
-            chunk_sections: sections,
+            chunk_z_16,
+            chunk_sections: from_fn(|i| {
+                Chunk16::new(
+                    Coordinate16::new(chunk_x_16, i as i32, chunk_z_16),
+                    minecraft_protocol::ids::blocks::Block::Air,
+                )
+            }),
             // TODO check chunk16s for air
             heightmap_motion_blocking: [[0; 16]; 16],
             heightmap_world_surface: [[0; 16]; 16],
         }
+    }
+
+    pub fn set_chunk(&mut self, y_16: i32, chunk: Chunk16) {
+        self.chunk_sections[y_16 as usize] = chunk;
     }
 
     pub fn to_minecraft(&self) -> Result<ChunkColumnSerialized, &'static str> {
@@ -62,7 +74,7 @@ impl ChunkColumn {
 
         Ok(ChunkColumnSerialized {
             chunk_x_16: self.chunk_x_16,
-            chunk_y_16: self.chunk_x_16,
+            chunk_z_16: self.chunk_z_16,
             chunk_sections: chunk_sections_serialized,
             block_entities,
             heightmap_motion_blocking: motion_blocking,
@@ -81,7 +93,7 @@ impl ChunkColumn {
             for z in 0..16 {
                 debug_assert!(heightmap[z][x] < (1 << bits_per_element));
 
-                accumulator |= (heightmap[z][x] >> start_bit_index) as u64;
+                accumulator |= (heightmap[z][x] as u64) << start_bit_index;
                 start_bit_index += bits_per_element;
 
                 if start_bit_index > u64::BITS {
@@ -114,7 +126,7 @@ impl ChunkColumn {
                 }
 
                 let byte = byte_array[byte_index] as u64;
-                heightmap[z][x] = ((byte << start_bit_index) & mask) as u16;
+                heightmap[z][x] = ((byte >> start_bit_index) & mask) as u16;
                 start_bit_index += bits_per_element;
             }
         }

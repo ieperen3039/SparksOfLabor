@@ -9,16 +9,18 @@ pub struct World {
 
 impl World {
     /**
-     * Creates a world initialized with an 11x11 chunk square stone floor around y=64, with a world height of 256
+     * Creates a world initialized with a 21x21 chunk square stone floor around y=64, with a world height of 256
      */
     pub fn new() -> World {
         let mut chunks = HashMap::new();
 
-        for z in -5..5 {
-            for x in -5..5 {
-                let mut chunk_sections = Vec::new();
-                for y in 0..16 {
-                    chunk_sections.push(Chunk16::new(
+        for z in -10..=10 {
+            for x in -10..=10 {
+                let mut chunk_column = Box::from(ChunkColumn::new(x, z));
+
+                // -64 to 64
+                for y in 0..8 {
+                    chunk_column.set_chunk(y, Chunk16::new(
                         Coordinate16::new(x, y, z),
                         minecraft_protocol::ids::blocks::Block::Stone,
                     ));
@@ -26,7 +28,7 @@ impl World {
 
                 chunks.insert(
                     ChunkColumnCoordinate { x, z },
-                    Box::from(ChunkColumn::new(x, z, chunk_sections)),
+                    chunk_column,
                 );
             }
         }
@@ -39,12 +41,20 @@ impl World {
     }
 
     pub fn get_area(&self, player_position: Position) -> Vec<&ChunkColumn> {
-        let chunk_column = Vec::new();
+        let mut area = Vec::new();
 
-        self.chunks.get(&ChunkColumnCoordinate::containing_position(
-            &player_position,
-        ));
+        let center_point = ChunkColumnCoordinate::containing_position(&player_position);
 
-        return chunk_column;
+        for z in -5..5 {
+            for x in -5..5 {
+                let chunk_coord = center_point.add(x, z);
+                match self.get_chunk(&chunk_coord) {
+                    None => {},
+                    Some(chunk_column) => area.push(chunk_column),
+                };
+            }
+        }
+
+        return area;
     }
 }
