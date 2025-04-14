@@ -13,7 +13,7 @@ use super::{
     player_character::PlayerCharacter,
 };
 
-const CLIENT_CONNECTION_TIMEOUT: Duration = Duration::from_millis(500);
+const CLIENT_CONNECTION_TIMEOUT: Duration = Duration::from_millis(5000);
 
 pub struct PLayerConnectHandler {}
 

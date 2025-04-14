@@ -51,6 +51,8 @@ pub fn receive_packet_raw(stream: &mut TcpStream) -> Result<Vec<u8>, Communicati
             if e.kind() == io::ErrorKind::UnexpectedEof && length.is_empty() {
                 // if we receive a single EOF, then the client closed the socket
                 return Err(CommunicationError::ConnectionClosed);
+            } else {
+                return Err(CommunicationError::IoError(e));
             }
         }
 
