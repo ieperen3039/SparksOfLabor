@@ -1,4 +1,3 @@
-use minecraft_protocol::components::blocks::BlockEntity;
 use serde::{Deserialize, Serialize};
 
 use crate::palette::Palette;
@@ -12,6 +11,10 @@ use minecraft_protocol::{
     components::{blocks as mc_blocks, chunk as mc_chunk},
     ids::blocks as mc_ids,
 };
+
+// A lot of values in this file are hard-coded literals (mostly factors of 16) simply because the
+// math only makes sense with a chunk width of 16.
+// Having the values as literals makes it easier to reason
 
 const CHUNK_B32_ENTRY_FLAG_BIT: u32 = 1 << 31;
 
@@ -170,7 +173,7 @@ impl Chunk16 {
         }
 
         let new_id = self.palette.add_voxel(voxel, coord);
-        if self.palette.len() > self.max_num_palettes() {
+        if self.palette.len() > self.max_palette_len() {
             self.upgrade();
         }
 
@@ -226,7 +229,10 @@ impl Chunk16 {
                     grid[coord.y][coord.z][coord.x] = ChunkB32Entry::make_mapped(new_id);
                 }
 
-                if self.palette.len() < self.min_num_palettes() {
+                if self.palette.len() == 1 {
+                    self.grid = Chunk16Grid::B0;
+                    self.palette.set_to_zero();
+                } else if self.palette.len() < self.min_palette_len() {
                     self.downgrade();
                 }
 
@@ -247,8 +253,8 @@ impl Chunk16 {
         }
     }
 
-    pub fn from_minecraft(mc_chunk: &mc_chunk::Chunk, position: Coordinate16) -> Chunk16 {
-        match &mc_chunk.blocks {
+    pub fn from_minecraft(mc_chunk: &mc_chunk::Chunk, position: Coordinate16, block_entities: Vec<mc_blocks::BlockEntity>) -> Chunk16 {
+        let mut chunk = match &mc_chunk.blocks {
             mc_chunk::PalettedData::Paletted { palette, indexed } => {
                 Chunk16::from_raw_palette(indexed, palette, position)
             },
@@ -260,34 +266,42 @@ impl Chunk16 {
                 )
             },
             mc_chunk::PalettedData::Raw { values } => Chunk16::from_direct(values, position),
+        };
+
+        for block_entity in block_entities {
+            let relative_y = block_entity.y() - chunk.zero_coordinate.y;
+            let internal_coordinate = ICoordinate::new(block_entity.x() as usize, relative_y as usize, block_entity.z() as usize);
+            chunk.palette.set_block_entity(block_entity, internal_coordinate);
         }
+
+        // TODO biomes?
+
+        return chunk;
     }
 
-    pub fn to_minecraft(
-        sol_chunk: &Self,
-    ) -> (mc_chunk::Chunk, Coordinate16, Vec<mc_blocks::BlockEntity>) {
+    pub fn to_minecraft(&self) -> (mc_chunk::Chunk, Coordinate16, Vec<mc_blocks::BlockEntity>) {
         let mut indices = Vec::new();
-        let mut palette = Vec::new();
+        let mut block_ids = Vec::new();
 
-        match &sol_chunk.grid {
+        match &self.grid {
             Chunk16Grid::B8(_) | Chunk16Grid::B4(_) | Chunk16Grid::B2(_) => {
                 indices.reserve(16 * 16 * 16);
 
-                for ele in sol_chunk.palette.all() {
-                    palette.push(ele);
+                for ele in self.palette.all_simple() {
+                    block_ids.push(ele);
                 }
             },
             Chunk16Grid::B32(_) | Chunk16Grid::B0 => {},
         }
 
-        let block_entities: Vec<mc_blocks::BlockEntity> = sol_chunk
+        let block_entities: Vec<mc_blocks::BlockEntity> = self
             .palette
             .all_nbt_voxels()
             .iter()
             .map(|v| {
-                BlockEntity::new(
+                mc_blocks::BlockEntity::new(
                     v.relative_x as u8,
-                    sol_chunk.zero_coordinate.y + (v.relative_y as i32),
+                    self.zero_coordinate.y + (v.relative_y as i32),
                     v.relative_z as u8,
                     v.voxel.get_block(),
                     v.voxel.get_nbt_data(),
@@ -295,7 +309,7 @@ impl Chunk16 {
             })
             .collect();
 
-        let blocks = match &sol_chunk.grid {
+        let blocks = match &self.grid {
             Chunk16Grid::B32(grid) => {
                 let mut values = Vec::new();
                 values.reserve(16 * 16 * 16);
@@ -306,7 +320,7 @@ impl Chunk16 {
                             let elt = grid[y][z][x];
 
                             if elt.is_mapped() {
-                                let voxel = &sol_chunk.palette.get(elt.as_mapped());
+                                let voxel = &self.palette.get(elt.as_mapped());
                                 values.push(voxel.get_block_id());
                             } else {
                                 values.push(elt.as_direct());
@@ -325,7 +339,7 @@ impl Chunk16 {
                     }
                 }
                 mc_chunk::PalettedData::Paletted {
-                    palette,
+                    palette: block_ids,
                     indexed: indices,
                 }
             },
@@ -345,7 +359,7 @@ impl Chunk16 {
                     }
                 }
                 mc_chunk::PalettedData::Paletted {
-                    palette,
+                    palette: block_ids,
                     indexed: indices,
                 }
             },
@@ -366,12 +380,12 @@ impl Chunk16 {
                 }
 
                 mc_chunk::PalettedData::Paletted {
-                    palette,
+                    palette: block_ids,
                     indexed: indices,
                 }
             },
             Chunk16Grid::B0 => {
-                let voxel = &sol_chunk.palette.get(0);
+                let voxel = &self.palette.get(0);
                 mc_chunk::PalettedData::Single {
                     value: voxel.get_block_id(),
                 }
@@ -380,11 +394,11 @@ impl Chunk16 {
 
         return (
             mc_chunk::Chunk {
-                block_count: sol_chunk.num_non_air_blocks as i16,
+                block_count: self.num_non_air_blocks as i16,
                 blocks,
                 biomes: mc_chunk::PalettedData::Single { value: 0 },
             },
-            Coordinate16::containing_coord(&sol_chunk.get_zero_coordinate()),
+            Coordinate16::containing_coord(&self.zero_coordinate()),
             block_entities,
         );
     }
@@ -392,7 +406,7 @@ impl Chunk16 {
     fn from_raw_palette(grid: &[u8], palette: &[u32], position: Coordinate16) -> Chunk16 {
         let mut sol_palette = Palette::new();
         for id in palette {
-            sol_palette.add(*id);
+            sol_palette.add_simple(*id);
         }
 
         let grid = if palette.len() < (1 << 2) {
@@ -526,7 +540,7 @@ impl Chunk16 {
         };
     }
 
-    fn max_num_palettes(&self) -> usize {
+    fn max_palette_len(&self) -> usize {
         match self.grid {
             Chunk16Grid::B32(_) => u32::MAX as usize,
             Chunk16Grid::B8(_) => (1 << 8) - 1,
@@ -536,12 +550,12 @@ impl Chunk16 {
         }
     }
 
-    fn min_num_palettes(&self) -> usize {
+    fn min_palette_len(&self) -> usize {
         // we allow a bigger representation, even if the smaller rep has this number of empty spots
         // to prevent us from converting chunks all the time
         const PALETTE_HYSTERESIS_VALUE: usize = 1;
 
-        let max_of_downgrade = match self.grid {
+        let max_len_of_downgrade = match self.grid {
             Chunk16Grid::B32(_) => (1 << 8) - 1,
             Chunk16Grid::B8(_) => (1 << 4) - 1,
             Chunk16Grid::B4(_) => (1 << 2) - 1,
@@ -549,10 +563,10 @@ impl Chunk16 {
             Chunk16Grid::B0 => 0,
         };
 
-        if max_of_downgrade <= PALETTE_HYSTERESIS_VALUE {
+        if max_len_of_downgrade <= PALETTE_HYSTERESIS_VALUE {
             return 0;
         } else {
-            return max_of_downgrade - PALETTE_HYSTERESIS_VALUE;
+            return max_len_of_downgrade - PALETTE_HYSTERESIS_VALUE;
         }
     }
 
@@ -589,7 +603,7 @@ impl Chunk16 {
                             let byte_ref: u8 = grid[y][z][x / 2];
 
                             if x % 2 == 0 {
-                                new_grid[y][z][x] = byte_ref;
+                                new_grid[y][z][x] = byte_ref & 0b1111;
                             } else {
                                 new_grid[y][z][x] = (byte_ref & 0b11110000) >> 4;
                             };
@@ -624,17 +638,19 @@ impl Chunk16 {
                 self.grid = Chunk16Grid::B4(new_grid)
             },
             Chunk16Grid::B0 => {
-                // fill with id 0, because that is always the only index that we had in use
+                // fill with id 0, because we make sure that 0 is always the only index of a B0
                 self.grid = Chunk16Grid::B2(Box::new([[[0; 4]; 16]; 16]))
             },
         };
     }
 
-    fn downgrade(&self) {
-        todo!()
+    fn downgrade(&mut self) {
+        todo!();
+
+        // if downgrading to Chunk16Grid::B0, call palette.set_to_zero()
     }
 
-    pub fn get_zero_coordinate(&self) -> Coordinate {
+    pub fn zero_coordinate(&self) -> Coordinate {
         self.zero_coordinate
     }
 }

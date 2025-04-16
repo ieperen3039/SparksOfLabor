@@ -2,6 +2,7 @@
 
 #[cfg(test)]
 mod chunk_tests;
+mod palette_tests;
 
 pub mod block;
 pub mod chunk16;

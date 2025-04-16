@@ -3,6 +3,7 @@ use minecraft_protocol::{
     nbt::{self, NbtTag},
 };
 use serde::{Deserialize, Serialize};
+use std::fmt::{Debug, Formatter};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Voxel {
@@ -59,6 +60,15 @@ impl Voxel {
 
     pub fn is_air(&self) -> bool {
         self.get_block().is_air_block()
+    }
+}
+
+impl Debug for Voxel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Voxel")
+            .field("block_id", &self.block_id)
+            .field("nbt", &!self.nbt.is_empty()) // true if present
+            .finish()
     }
 }
 
