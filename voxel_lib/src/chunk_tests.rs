@@ -55,7 +55,7 @@ mod tests {
         }
 
         let max = min;
-        for shift in 8..=1 {
+        for shift in (1..=8).rev() {
             let min = (1 << shift) - 1;
             for i in min..=max {
                 clear_voxel(&mut chunk, i);

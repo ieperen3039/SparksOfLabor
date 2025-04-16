@@ -9,7 +9,7 @@ pub struct World {
 
 impl World {
     /**
-     * Creates a world initialized with a 21x21 chunk square stone floor around y=64, with a world height of 256
+     * Creates a world initialized with a 21x21 chunk square stone floor around y=0
      */
     pub fn new() -> World {
         let mut chunks = HashMap::new();
@@ -18,8 +18,8 @@ impl World {
             for x in -10..=10 {
                 let mut chunk_column = Box::from(ChunkColumn::new(x, z));
 
-                // -64 to 64
-                for y in 0..8 {
+                // -64 to 0
+                for y in 0..4 {
                     chunk_column.set_chunk(y, Chunk16::new(
                         Coordinate16::new(x, y, z),
                         minecraft_protocol::ids::blocks::Block::Stone,

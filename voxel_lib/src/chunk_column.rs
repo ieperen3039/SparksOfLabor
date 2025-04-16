@@ -44,14 +44,62 @@ impl ChunkColumn {
                     minecraft_protocol::ids::blocks::Block::Air,
                 )
             }),
-            // TODO check chunk16s for air
             heightmap_motion_blocking: [[0; 16]; 16],
             heightmap_world_surface: [[0; 16]; 16],
         }
     }
 
     pub fn set_chunk(&mut self, y_16: i32, chunk: Chunk16) {
+        self.update_heightmap(y_16, &chunk);
+
         self.chunk_sections[y_16 as usize] = chunk;
+    }
+
+    fn update_heightmap(&mut self, y_16: i32, chunk: &Chunk16) {
+        let highest_chunk_value = (y_16 + 1) * 16;
+
+        for z in 0..16usize {
+            for x in 0..16usize {
+                // we will assume that every surface is also blocking
+                // "WORLD_SURFACE = All blocks other than air, cave air and void air"
+                let mut blocking_found = false;
+                let mut surface_found = false;
+
+                if self.heightmap_motion_blocking[z][x] >= highest_chunk_value as u16 {
+                    blocking_found = true;
+                }
+
+                if self.heightmap_world_surface[z][x] >= highest_chunk_value as u16 {
+                    surface_found = true;
+                }
+
+                if blocking_found && surface_found {
+                    continue;
+                }
+
+                for y in (0..16usize).rev() {
+                    let block = chunk
+                        .get_voxel_internal(ICoordinate::new(x, y, z))
+                        .get_block();
+
+                    if !blocking_found {
+                        if !block.is_blocking() {
+                            continue;
+                        }
+                        // first blocking block of the pillar
+                        self.heightmap_motion_blocking[z][x] = ((y_16 * 16) as u16) + (y as u16);
+
+                        if surface_found {
+                            break;
+                        }
+                        blocking_found = true;
+                    } else if block.is_air_block() {
+                        self.heightmap_world_surface[z][x] = ((y_16 * 16) as u16) + (y as u16);
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     pub fn to_minecraft(&self) -> Result<ChunkColumnSerialized, &'static str> {
