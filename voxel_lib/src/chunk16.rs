@@ -644,10 +644,69 @@ impl Chunk16 {
         };
     }
 
-    fn downgrade(&mut self) {
-        todo!();
-
-        // if downgrading to Chunk16Grid::B0, call palette.set_to_zero()
+        fn downgrade(&mut self) {
+		match &self.grid {
+			Chunk16Grid::B32(grid) => {
+				let mut new_grid = Box::new([[[0; 16]; 16]; 16]);
+				for y in 0..16usize {
+					for z in 0..16usize {
+						for x in 0..16usize {
+							let entry = grid[y][z][x];
+							new_grid[y][z][x] = if entry.is_direct() {
+								entry.as_direct() as u8
+							} else {
+								entry.as_mapped() as u8
+							};
+						}
+					}
+				}
+				self.grid = Chunk16Grid::B8(new_grid);
+			}
+			Chunk16Grid::B8(grid) => {
+				let mut new_grid = Box::new([[[0; 8]; 16]; 16]);
+				for y in 0..16usize {
+					for z in 0..16usize {
+						for x in 0..16usize {
+							let byte = grid[y][z][x];
+							let id = byte & 0b1111;
+							new_grid[y][z][x / 2] = if x % 2 == 0 {
+								id
+							} else {
+								id << 4
+							};
+						}
+					}
+				}
+				self.grid = Chunk16Grid::B4(new_grid);
+			}
+			Chunk16Grid::B4(grid) => {
+				let mut new_grid = Box::new([[[0; 4]; 16]; 16]);
+				for y in 0..16usize {
+					for z in 0..16usize {
+						for x in 0..16usize {
+							let byte = grid[y][z][x / 2];
+							if x % 2 == 0 {
+								byte & 0b1111
+							} else {
+								byte >> 4
+							}
+							
+							let index_in_byte = x % 4;
+							let num_bit_shifts = index_in_byte * 2;
+							let id_2bit = byte & 0b11;
+				
+							new_grid[y][z][x / 4] |= id_2bit << num_bit_shifts;
+						}
+					}
+				}
+				self.grid = Chunk16Grid::B2(new_grid);
+			}
+			Chunk16Grid::B2(grid) => {
+				self.grid = Chunk16Grid::B0;
+				self.palette.set_to_zero();
+			}
+			Chunk16Grid::B0 => panic!("Downgrade while already B0");
+		}
     }
 
     pub fn zero_coordinate(&self) -> Coordinate {
