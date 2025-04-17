@@ -235,4 +235,24 @@ mod tests {
         assert_eq!(palette.all_simple().len(), 1);
         assert_eq!(palette.all_nbt_voxels().len(), 2);
     }
+
+    #[test]
+    fn test_remove_holes_and_generate_mapping() {
+        let mut palette = Palette::new();
+        
+        // Add some mappings to the palette
+        palette.add_simple(1);
+        palette.add_simple(2);
+        palette.add_simple(3);
+        palette.add_simple(4);
+        palette.add_simple(5);
+		
+        palette.remove(2);
+        palette.remove(4);
+
+        let expected_mapping = vec![(0, 0), (2, 1), (4, 2)];
+        let actual_mapping = palette.remove_holes_and_generate_mapping();
+
+        assert_eq!(actual_mapping, expected_mapping);
+    }
 }
