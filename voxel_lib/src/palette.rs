@@ -208,6 +208,20 @@ impl Palette {
 
         unreachable!("Id not found")
     }
+    
+    pub fn remove_holes_and_generate_mapping(&self) -> Vec<(u16, u16)> {
+        let mut mapping = Vec::new();
+        let mut new_index = 0;
+    
+        for (old_index, block_mapping) in self.base.iter().enumerate() {
+            if !matches!(block_mapping.data, MappingData::Empty) {
+                mapping.push((old_index as u16, new_index));
+                new_index += 1;
+            }
+        }
+    
+        mapping
+    }
 
     pub fn set_to_zero(&mut self) {
         assert_eq!(self.len(), 1);
