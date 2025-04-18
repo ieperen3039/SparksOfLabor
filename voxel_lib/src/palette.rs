@@ -140,7 +140,10 @@ impl Palette {
     // upgrades a previously added simple block into an nbt block.
     pub fn set_block_entity(&mut self, voxel: mc_blocks::BlockEntity, coord: ICoordinate) -> u16 {
         let block_id = voxel.get_block().id();
-        self.remove(self.find(block_id).expect("block entity overwrites block id not in this palette"));
+        self.remove(
+            self.find(block_id)
+                .expect("block entity overwrites block id not in this palette"),
+        );
 
         let new_voxel = NbtVoxel {
             voxel: Voxel::from_nbt(block_id, voxel.data),
@@ -161,8 +164,8 @@ impl Palette {
         self.add_id_internal(new_mapping)
     }
 
-    pub fn remove(&mut self, id: u16) -> u32 {
-        let elt = &mut self.base[id as usize];
+    pub fn remove(&mut self, idx: u16) -> u32 {
+        let elt = &mut self.base[idx as usize];
 
         let block_id = elt.block_id;
 
@@ -187,13 +190,15 @@ impl Palette {
         return block_id;
     }
 
-    pub fn get(&self, id: u16) -> VoxelRef {
-        assert!((id as usize) < self.base.len(), "get out of bounds");
+    pub fn get(&self, idx: u16) -> VoxelRef {
+        assert!((idx as usize) < self.base.len(), "get out of bounds");
 
-        let mapping = &self.base[id as usize];
+        let mapping = &self.base[idx as usize];
         match mapping.data {
             MappingData::Simple { .. } => VoxelRef::Inferred(mapping.block_id),
-            MappingData::Nbt { nbt_idx: idx } => VoxelRef::Real(&self.nbt_voxels[idx as usize].voxel),
+            MappingData::Nbt { nbt_idx: idx } => {
+                VoxelRef::Real(&self.nbt_voxels[idx as usize].voxel)
+            },
             MappingData::Empty => panic!("get on non-existent id"),
         }
     }
@@ -208,30 +213,38 @@ impl Palette {
 
         unreachable!("Id not found")
     }
-    
-    pub fn remove_holes_and_generate_mapping(&self) -> Vec<(u16, u16)> {
-        let mut mapping = Vec::new();
-        let mut new_index = 0;
-    
-        for (old_index, block_mapping) in self.base.iter().enumerate() {
-            if !matches!(block_mapping.data, MappingData::Empty) {
-                mapping.push((old_index as u16, new_index));
-                new_index += 1;
-            }
-        }
-    
-        mapping
+
+    // the returned vector is the mapping from new indices to old indices
+    pub fn remove_holes(&mut self) -> Vec<u16> {
+        let mut mapping = Vec::new();
+        let mut new_base = Vec::new();
+
+        for (old_index, block_mapping) in self.base.iter().enumerate() {
+            if !matches!(block_mapping.data, MappingData::Empty) {
+                new_base.push(block_mapping.clone());
+                mapping.push(old_index as u16);
+            }
+        }
+
+        self.base = new_base;
+
+        mapping
     }
 
     pub fn set_to_zero(&mut self) {
         assert_eq!(self.len(), 1);
 
-        if self.base.len() == 1 { return; }
+        if self.base.len() == 1 {
+            return;
+        }
 
-        let mut only_element = BlockMapping { block_id: 0, data: MappingData::Empty };
+        let mut only_element = BlockMapping {
+            block_id: 0,
+            data: MappingData::Empty,
+        };
         for elt in &self.base {
             if let MappingData::Empty = elt.data {
-                continue
+                continue;
             }
             assert!(matches!(only_element.data, MappingData::Empty));
             only_element = elt.clone();

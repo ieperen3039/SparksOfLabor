@@ -242,16 +242,24 @@ mod tests {
         
         // Add some mappings to the palette
         palette.add_simple(1);
-        palette.add_simple(2);
+        let id2 = palette.add_simple(2);
         palette.add_simple(3);
-        palette.add_simple(4);
+        let id4 = palette.add_simple(4);
         palette.add_simple(5);
-		
-        palette.remove(2);
-        palette.remove(4);
 
-        let expected_mapping = vec![(0, 0), (2, 1), (4, 2)];
-        let actual_mapping = palette.remove_holes_and_generate_mapping();
+        assert_eq!(palette.len(), 5);
+        palette.remove(id2);
+        assert_eq!(palette.len(), 4);
+        palette.remove(id4);
+        assert_eq!(palette.len(), 3);
+
+        // 1 stays at index 0, 
+        // 3 goes from index 2 to index 1, 
+        // 5 goes from index 4 to index 2
+        let expected_mapping = vec![0, 2, 4];
+        let actual_mapping = palette.remove_holes();
+
+        assert_eq!(palette.len(), 3);
 
         assert_eq!(actual_mapping, expected_mapping);
     }

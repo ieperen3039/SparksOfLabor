@@ -244,7 +244,7 @@ impl Chunk16 {
         let old_block_id = self.palette.remove(old_id);
 
         let voxel_was_air = mc_ids::Block::from_id(old_block_id)
-            .expect("invalid id")
+            .expect("corrupted voxel in chunk")
             .is_air_block();
 
         if !voxel_was_air {
@@ -262,7 +262,7 @@ impl Chunk16 {
                 // TODO from_id or from_state_id?
                 Chunk16::new(
                     position,
-                    mc_ids::Block::from_id(*value).expect("unkown block id"),
+                    mc_ids::Block::from_id(*value).expect("unknown block id"),
                 )
             },
             mc_chunk::PalettedData::Raw { values } => Chunk16::from_direct(values, position),
@@ -645,7 +645,7 @@ impl Chunk16 {
     }
 
     fn downgrade(&mut self) {
-        let mapping = palette.remove_holes_and_generate_mapping();
+        let mapping = self.palette.remove_holes();
         
         match &self.grid {
             Chunk16Grid::B32(grid) => {
@@ -693,7 +693,7 @@ impl Chunk16 {
                                 byte & 0b1111
                             } else {
                                 byte >> 4
-                            }
+                            };
                             let new_id = mapping[id as usize] as u8;
                             
                             let index_in_byte = x % 4;
