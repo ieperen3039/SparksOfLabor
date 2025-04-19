@@ -138,7 +138,7 @@ pub fn initialize_client(
 ) -> Result<PlayerInfo, CommunicationError> {
     let stream = &mut socket;
 
-    // Receive client informations
+    // Receive client information
     let mut buffer = Vec::new();
     let packet = network::receive_packet(stream, &mut buffer)?;
     let mc_packets::config::ServerboundPacket::ClientInformations {
@@ -206,7 +206,7 @@ pub fn initialize_client(
     println!("FinishConfiguration received");
 
     // Send join game
-    let player_id: usize = 3429; // TODO dynamic attribution
+    let player_id: usize = 0; // TODO how does player_id work with other players?
 
     let join_game = PlayClientbound::JoinGame {
         player_id: player_id as i32,
@@ -265,7 +265,7 @@ pub fn initialize_client(
     // Entity event
     let entity_event = PlayClientbound::EntityEvent {
         entity_id: player_id as i32,
-        entity_status: 28,
+        entity_status: 28, // set permission level to 4
     };
     network::send_packet(stream, entity_event)?;
     println!("EntityEvent sent");

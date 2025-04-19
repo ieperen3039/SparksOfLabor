@@ -1,13 +1,11 @@
-use std::collections::BinaryHeap;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
-use std::time::{Duration, Instant};
-
 use crate::entities::entity_manager::EntityManager;
 use crate::game_event::{EventType, GameEvent};
 use crate::voxels::world::World;
-
-pub type Tick = u64;
-const TICK_PERIOD: Duration = Duration::from_millis(1000 / 20);
+use sol_network_lib::constants;
+use sol_network_lib::Tick;
+use std::collections::BinaryHeap;
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::time::Instant;
 
 // TODO move to other file
 pub enum GameCommand {
@@ -18,7 +16,7 @@ pub enum GameCommand {
 pub struct GameState {
     is_stopping: bool,
     current_tick: Tick,
-    message_sender: Sender<GameCommand>,
+    message_queue_sender: Sender<GameCommand>,
     message_queue: Receiver<GameCommand>,
     event_queue: BinaryHeap<GameEvent>,
     world: World,
@@ -31,7 +29,7 @@ impl GameState {
         return GameState {
             is_stopping: false,
             current_tick: 0,
-            message_sender: sender,
+            message_queue_sender: sender,
             message_queue: receiver,
             world,
             entities: EntityManager::new(),
@@ -70,14 +68,12 @@ impl GameState {
 
                 let game_event = self.event_queue.pop().unwrap().event;
                 self.handle_event(game_event);
-
-                // TODO: if necessary, we could continue before the tick is over
             }
 
             let end = Instant::now();
 
             // number of milliseconds remaining in this loop
-            let remaining_time = (end - last_loop_end).checked_sub(TICK_PERIOD);
+            let remaining_time = (end - last_loop_end).checked_sub(constants::TICK_PERIOD);
 
             if let Some(remaining_time) = remaining_time {
                 std::thread::sleep(remaining_time);
@@ -88,7 +84,7 @@ impl GameState {
     }
 
     pub fn get_message_queue(&self) -> Sender<GameCommand> {
-        self.message_sender.clone()
+        self.message_queue_sender.clone()
     }
 
     fn handle_event(&self, game_event: EventType) {

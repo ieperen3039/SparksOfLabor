@@ -1,8 +1,6 @@
-use std::cmp::Ordering;
-
+use sol_network_lib::Tick;
 use sol_voxel_lib::vector_alias::Position;
-
-use crate::game_loop::Tick;
+use std::cmp::Ordering;
 
 pub struct GameEvent {
     pub tick: Tick,
