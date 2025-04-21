@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
+extern crate zmq;
 use sol_address_server::static_addresses;
-use sol_log_server::log::{Logger, Severity};
+use sol_log_server::logger::Logger;
+use sol_log_server::Severity;
 use sol_network_lib::network::{NetworkError, ReplyLoop};
 use sol_world_messages::{WorldServerRep, WorldServerReq};
-
-extern crate zmq;
 
 fn main() {
     let context = zmq::Context::new();

@@ -1,10 +1,11 @@
 use crate::entities::entity_manager::EntityManager;
 use crate::game_event::{EventType, GameEvent};
+use crate::minecraft_connection::client_connection::ClientSendCommand;
 use crate::voxels::world::World;
 use sol_network_lib::constants;
 use sol_network_lib::Tick;
 use std::collections::BinaryHeap;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{self, TryRecvError};
 use std::time::Instant;
 
 // TODO move to other file
@@ -16,21 +17,20 @@ pub enum GameCommand {
 pub struct GameState {
     is_stopping: bool,
     current_tick: Tick,
-    message_queue_sender: Sender<GameCommand>,
-    message_queue: Receiver<GameCommand>,
+    message_queue: mpsc::Receiver<GameCommand>,
+    client_comm_channel: mpsc::Sender<ClientSendCommand>,
     event_queue: BinaryHeap<GameEvent>,
     world: World,
     entities: EntityManager,
 }
 
 impl GameState {
-    pub fn build(world: World) -> GameState {
-        let (sender, receiver) = std::sync::mpsc::channel();
+    pub fn build(world: World, game_command_receiver: mpsc::Receiver<GameCommand>, client_comm_channel: mpsc::Sender<ClientSendCommand>) -> GameState {
         return GameState {
             is_stopping: false,
             current_tick: 0,
-            message_queue_sender: sender,
-            message_queue: receiver,
+            message_queue: game_command_receiver,
+            client_comm_channel,
             world,
             entities: EntityManager::new(),
             event_queue: BinaryHeap::new(),
@@ -81,10 +81,6 @@ impl GameState {
 
             last_loop_end = end;
         }
-    }
-
-    pub fn get_message_queue(&self) -> Sender<GameCommand> {
-        self.message_queue_sender.clone()
     }
 
     fn handle_event(&self, game_event: EventType) {

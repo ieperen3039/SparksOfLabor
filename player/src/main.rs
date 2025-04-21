@@ -8,23 +8,25 @@ pub mod minecraft_connection;
 pub mod voxels;
 
 use crate::game_loop::GameCommand;
+use crate::minecraft_connection::client_connection::ClientSendCommand;
+use crate::minecraft_connection::client_connection::McClientSender;
 use minecraft_connection::{
-    client_connection::McClientConnection, player_character,
+    client_connection::McClientReceiver, player_character,
     player_connect_handler::PLayerConnectHandler,
 };
 use sol_address_server::static_addresses;
-use sol_log_server::log::Logger;
+use sol_log_server::logger_mt::LoggerMt;
 use sol_voxel_lib::vector_alias::{Position, Rotation};
 use std::thread;
 
 /**
  * OK, here's what happes when a player server boots.
  *
- * We connect to the web server, which gives us an address of a log-in server. For now we use `localhost`, later this would be an URL.
+ * We connect to the web server, which gives us an address of a log-in server. For now, we use `localhost`, later this would be an URL.
  * The web server queries the address server for the list of addresses, and sends list of names and addresses to the player server.
- * We listen in the mean time on localhost for incoming connections, until the Java client connects to us.
+ * We listen in the meantime on localhost for incoming connections, until the Java client connects to us.
  * When the player tries to join, we receive player information from the client (name + UUID).
- * We connect to the "Player data server" to get the data about the player inventory, position, statistics etc.
+ * We connect to the "Player data server" to get the data about the player inventory, position, statistics, etc.
  * We connect to the "Player position server" to get a list of nearby players (their UUIDs)
  * We connect to the "Load balancer" to query nearby chunks and entities.
  * We send this information to the java client.
@@ -32,7 +34,7 @@ use std::thread;
  */
 fn main() {
     let context = zmq::Context::new();
-    let logger = Logger::new(
+    let logger = LoggerMt::new(
         "Player server",
         context.clone(),
         String::from(static_addresses::LOG_SERVER),
@@ -62,18 +64,26 @@ fn main() {
 
     logger.send_status("Player online");
 
-    let mut game_state = game_loop::GameState::build(world);
-    let game_command_channel = game_state.get_message_queue();
-    let mut connection =
-        McClientConnection::new(player_connection_data.socket, game_command_channel.clone());
+    let (game_command_channel, game_command_receiver) = std::sync::mpsc::channel();
+    let (client_comm_channel, client_comm_receiver) = std::sync::mpsc::channel();
 
-    let connection_thread = thread::spawn(move || connection.run());
+    let mut game_state = game_loop::GameState::build(world, game_command_receiver, client_comm_channel.clone());
+    let mut client_sender = McClientSender::new(player_connection_data.socket.try_clone().unwrap(), logger.clone(), client_comm_receiver);
+    let mut client_receiver = McClientReceiver::new(player_connection_data.socket, logger.clone(), game_command_channel.clone());
+
+    let connection_send_thread = thread::spawn(move || client_sender.execute_send());
+    let connection_receive_thread = thread::spawn(move || client_receiver.execute_receive());
     let game_thread = thread::spawn(move || game_state.run());
 
     // when the connection is closed, the game stops
-    connection_thread.join().unwrap();
-    game_command_channel.send(GameCommand::GameStop).unwrap();
+    connection_receive_thread.join().unwrap();
 
+    // initiate stop
+    game_command_channel.send(GameCommand::GameStop).unwrap();
+    client_comm_channel.send(ClientSendCommand::Stop).unwrap();
+
+    // await stop
+    connection_send_thread.join().unwrap();
     game_thread.join().unwrap();
 
     logger.send_status("Player offline");

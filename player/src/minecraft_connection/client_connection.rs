@@ -6,25 +6,55 @@ use crate::game_loop::GameCommand;
 use crate::minecraft_connection::network;
 use minecraft_protocol::packets::play_clientbound::ClientboundPacket;
 use minecraft_protocol::packets::play_serverbound::ServerboundPacket;
+use minecraft_protocol::MinecraftPacketPart;
+use sol_log_server::logger_mt::LoggerMt;
+use std::io::Write;
 use std::net::TcpStream;
 use std::sync::mpsc;
 
-pub struct McClientConnection {
+pub struct McClientReceiver {
     socket: TcpStream,
-    world_event_channel: mpsc::Sender<GameCommand>,
+    logger: LoggerMt,
+    world_event_inbound_queue: mpsc::Sender<GameCommand>,
 }
 
-impl McClientConnection {
-    pub fn new(socket: TcpStream, world_event_channel: mpsc::Sender<GameCommand>) -> Self {
-        McClientConnection {
+pub enum ClientSendCommand {
+    Stop,
+    Message(Vec<u8>),
+}
+
+impl ClientSendCommand {
+    pub fn try_from<'a, Packet: MinecraftPacketPart<'a>>(
+        msg: Packet,
+    ) -> Result<Self, CommunicationError> {
+        msg.serialize_minecraft_packet()
+            .map(|serialized| { ClientSendCommand::Message(serialized) })
+            .map_err(|e| CommunicationError::SerializationError(e.to_string()))
+    }
+}
+
+pub struct McClientSender {
+    socket: TcpStream,
+    logger: LoggerMt,
+    client_comm_outbound_queue: mpsc::Receiver<ClientSendCommand>,
+}
+
+impl McClientReceiver {
+    pub fn new(
+        socket: TcpStream,
+        logger: LoggerMt,
+        world_event_inbound_queue: mpsc::Sender<GameCommand>,
+    ) -> Self {
+        McClientReceiver {
             socket,
-            world_event_channel,
+            logger,
+            world_event_inbound_queue,
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn execute_receive(&mut self) {
         loop {
-            let mut buffer = Vec::with_capacity(1);
+            let mut buffer = Vec::new();
 
             let packet = network::receive_packet(&mut self.socket, &mut buffer);
 
@@ -40,7 +70,7 @@ impl McClientConnection {
             println!("Received {packet:?}");
 
             let result = match packet {
-                ServerboundPacket::RequestPing { payload } => self.send_ping(payload as i64),
+                ServerboundPacket::RequestPing { payload } => self.send_ping(payload),
                 ServerboundPacket::PlaceBlock { .. } => Ok(()),
                 ServerboundPacket::UseItem { .. } => Ok(()),
 
@@ -112,5 +142,35 @@ impl McClientConnection {
             ClientboundPacket::PingResponse { payload },
         )?;
         Ok(())
+    }
+}
+
+impl McClientSender {
+    pub fn new(
+        socket: TcpStream,
+        logger: LoggerMt,
+        client_comm_outbound_queue: mpsc::Receiver<ClientSendCommand>,
+    ) -> Self {
+        McClientSender {
+            socket,
+            logger,
+            client_comm_outbound_queue,
+        }
+    }
+
+    pub fn execute_send(&mut self) {
+        loop {
+            let command = self.client_comm_outbound_queue.recv().unwrap();
+            match command {
+                ClientSendCommand::Stop => return,
+                ClientSendCommand::Message(msg) => {
+                    let result = self.socket.write_all(&msg);
+
+                    if result.is_err() {
+                        println!("Error while sending message: {result:?}");
+                    }
+                },
+            }
+        }
     }
 }

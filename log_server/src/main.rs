@@ -1,5 +1,5 @@
 use sol_address_server::static_addresses;
-use sol_log_server::log::*;
+use sol_log_server::*;
 use sol_network_lib::network::NetworkError;
 use time::OffsetDateTime;
 
