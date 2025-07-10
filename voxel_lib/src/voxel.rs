@@ -1,5 +1,5 @@
 use minecraft_protocol::{
-    ids::blocks::Block,
+    data::blocks::Block,
     nbt::{self, NbtTag},
 };
 use serde::{Deserialize, Serialize};

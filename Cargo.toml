@@ -22,4 +22,5 @@ members = [
 
 [patch.crates-io]
 minecraft-protocol = { path = "../RustProjects/minecraft-protocol/minecraft-protocol" }
-minecraft-positions = { path = "../RustProjects/minecraft-protocol/minecraft-positions" }
+#minecraft-registries = { path = "../RustProjects/minecraft-protocol/minecraft-registries" }
+#minecraft-vanilla = { path = "../RustProjects/minecraft-protocol/minecraft-vanilla" }

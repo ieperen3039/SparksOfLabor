@@ -9,8 +9,9 @@ use crate::{
 };
 use minecraft_protocol::{
     components::{blocks as mc_blocks, chunk as mc_chunk},
-    ids::blocks as mc_ids,
+    data::blocks as mc_ids,
 };
+use minecraft_registries::block_property_registry::BlockPropertyRegistry;
 
 // A lot of values in this file are hard-coded literals (mostly factors of 16) simply because the
 // math only makes sense with a chunk width of 16.

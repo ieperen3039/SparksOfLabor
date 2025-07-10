@@ -1,8 +1,7 @@
 use core::panic;
-use std::fmt::Debug;
-
-use minecraft_protocol::ids::blocks::Block;
+use minecraft_protocol::data::blocks::Block;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 use crate::vector_alias::AxisDirection;
 

@@ -1,4 +1,4 @@
-use minecraft_protocol::ids::blocks as mc_ids;
+use minecraft_protocol::data::blocks as mc_ids;
 
 #[cfg(test)]
 mod tests {

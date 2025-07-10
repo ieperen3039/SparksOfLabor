@@ -4,7 +4,7 @@ mod tests {
     use crate::vector_alias::ICoordinate;
     use crate::voxel::{Voxel, VoxelRef};
     use minecraft_protocol::components::blocks::BlockEntity;
-    use minecraft_protocol::ids::blocks::Block;
+    use minecraft_protocol::data::blocks::Block;
     use minecraft_protocol::nbt::NbtTag;
 
     #[test]

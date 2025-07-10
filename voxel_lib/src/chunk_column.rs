@@ -5,6 +5,7 @@ use minecraft_protocol::components::blocks::BlockEntity;
 use std::array::from_fn;
 
 use minecraft_protocol::components::chunk as mc_chunk;
+use minecraft_protocol::data::blocks::Block;
 use serde::{Deserialize, Serialize};
 
 // the protocol enforces 24 chunks per column.
