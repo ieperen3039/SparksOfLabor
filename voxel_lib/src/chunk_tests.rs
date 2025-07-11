@@ -7,12 +7,40 @@ mod tests {
     use crate::vector_alias::*;
     use crate::voxel::Voxel;
     use crate::voxel_errors::VoxelIndexError;
+    use minecraft_registries::block_property_registry::{BlockDataEntry, BlockPropertyRegistry, FireBehaviour, PistonBehaviour};
+
+    fn get_registry() -> BlockPropertyRegistry {
+        let mut registry = BlockPropertyRegistry::new();
+        // a little over 4096 blocks
+        for i in 0..4100 {
+            registry.add(mc_ids::Block::from_id(i), "test", BlockDataEntry {
+                internal_name: i.to_string(),
+                hardness: None,
+                appropriate_tools: [None; 8],
+                blast_resistance: 0.0,
+                is_air: (i == 0),
+                is_transparent: false,
+                is_conductive: false,
+                is_solid: false,
+                is_liquid: false,
+                is_replaceable: false,
+                fire_behaviour: FireBehaviour::Flammable,
+                ignite_odds: 0,
+                burn_odds: 0,
+                filter_light: 0,
+                emit_light: 0,
+                map_color: [0; 3],
+                piston_behavior: PistonBehaviour::Push,
+            })
+        }
+        registry
+    }
 
     #[test]
     fn test_get_voxel() {
         let location = Coordinate16::new(0, 0, 0);
-        let fill_value = mc_ids::Block::from_id(1).unwrap();
-        let chunk = Chunk16::new(location, fill_value);
+        let fill_value = mc_ids::Block::from_id(1);
+        let chunk = Chunk16::new(location, fill_value, true);
         assert_eq!(chunk.zero_coordinate(), Coordinate::from(location));
 
         let coord = Coordinate::new(0, 0, 0);
@@ -23,14 +51,15 @@ mod tests {
 
     #[test]
     fn test_set_voxel() {
+        let registry = get_registry();
         let location = Coordinate16::new(0, 0, 0);
-        let fill_value = mc_ids::Block::from_id(1).unwrap();
-        let mut chunk = Chunk16::new(location, fill_value);
+        let fill_value = mc_ids::Block::from_id(1);
+        let mut chunk = Chunk16::new(location, fill_value, true);
         let coord = Coordinate::new(0, 0, 0);
         let block_id = 2;
-        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(block_id).unwrap());
+        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(block_id));
 
-        chunk.set_voxel(coord, new_voxel).unwrap();
+        chunk.set_voxel(coord, new_voxel, &registry).unwrap();
         let voxel_ref = chunk.get_voxel(coord).unwrap();
         assert_eq!(voxel_ref.get_block_id(), block_id);
     }
@@ -38,8 +67,8 @@ mod tests {
     #[test]
     fn test_upgrade() {
         let location = Coordinate16::new(0, 0, 0);
-        let fill_value = mc_ids::Block::from_id(0).unwrap();
-        let mut chunk = Chunk16::new(location, fill_value);
+        let fill_value = mc_ids::Block::from_id(0);
+        let mut chunk = Chunk16::new(location, fill_value, true);
 
         let mut min = 1;
         for shift in 1..=9 {
@@ -67,9 +96,10 @@ mod tests {
 
     #[test]
     fn test_from_to_minecraft() {
+        let registry = get_registry();
         let location = Coordinate16::new(0, 0, 0);
-        let fill_value = mc_ids::Block::from_id(0).unwrap();
-        let mut original_chunk = Chunk16::new(location, fill_value);
+        let fill_value = mc_ids::Block::from_id(0);
+        let mut original_chunk = Chunk16::new(location, fill_value, true);
 
         // iterate in much the same way as the upgrade test does
         let min = 1;
@@ -80,7 +110,7 @@ mod tests {
             }
 
             let (mc_chunk, coord, block_entities) = original_chunk.to_minecraft();
-            let new_chunk = Chunk16::from_minecraft(&mc_chunk, coord, block_entities);
+            let new_chunk = Chunk16::from_minecraft(&mc_chunk, coord, block_entities, &registry);
 
             check_voxels(&new_chunk, max);
         }
@@ -88,16 +118,17 @@ mod tests {
 
     #[test]
     fn test_set_voxel_out_of_bounds() {
+        let registry = get_registry();
         let location = Coordinate16::new(1, 0, 0);
-        let fill_value = mc_ids::Block::from_id(1).unwrap(); // Assuming 1 is a valid block ID
-        let mut chunk = Chunk16::new(location, fill_value);
+        let fill_value = mc_ids::Block::from_id(1); // Assuming 1 is a valid block ID
+        let mut chunk = Chunk16::new(location, fill_value, true);
 
         // Define an out-of-bounds coordinate
         let out_of_bounds_coord = Coordinate::new(0, 0, 0); // x is out of bounds
-        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(2).unwrap()); // Assuming 2 is a valid block ID
+        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(2)); // Assuming 2 is a valid block ID
 
         // Attempt to set a voxel at the out-of-bounds coordinate
-        let result = chunk.set_voxel(out_of_bounds_coord, new_voxel);
+        let result = chunk.set_voxel(out_of_bounds_coord, new_voxel, &registry);
 
         // Check that the result is an error
         assert!(result.is_err());
@@ -111,9 +142,10 @@ mod tests {
     }
 
     fn add_voxel(chunk: &mut Chunk16, i: i32) {
-        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(i as u32).unwrap());
+        let registry = get_registry();
+        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(i as u32));
         let coord = Coordinate::new(i % 16, (i / 16) % 16, (i / 256) % 16);
-        chunk.set_voxel(coord, new_voxel).unwrap();
+        chunk.set_voxel(coord, new_voxel, &registry).unwrap();
     }
 
     fn check_voxels(chunk: &Chunk16, max: i32) -> bool {
@@ -140,9 +172,10 @@ mod tests {
     }
 
     fn clear_voxel(chunk: &mut Chunk16, i: i32) {
+        let registry = get_registry();
         // like set_voxel, but setting it to 1
-        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(1).unwrap());
+        let new_voxel = Voxel::from_block(mc_ids::Block::from_id(1));
         let coord = Coordinate::new(i % 16, (i / 16) % 16, (i / 256) % 16);
-        chunk.set_voxel(coord, new_voxel).unwrap();
+        chunk.set_voxel(coord, new_voxel, &registry).unwrap();
     }
 }

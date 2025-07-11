@@ -32,8 +32,6 @@ impl BaseVoxel {
 
     pub fn get_type(&self) -> Block {
         Block::from_id(self.get_bits(BITS_BLOCK_TYPE_START, NUM_BITS_BLOCK_TYPE))
-            // TODO resilience to corruption and manipulation
-            .expect("unknown block type value")
     }
 
     pub fn get_variant(&self) -> u32 {

@@ -32,7 +32,7 @@ impl Voxel {
     }
 
     pub fn from_block(block: Block) -> Voxel {
-        Self::from_id(block as u32)
+        Self::from_id(block.id())
     }
 
     pub fn is_simple(&self) -> bool {
@@ -40,7 +40,7 @@ impl Voxel {
     }
 
     pub fn get_block(&self) -> Block {
-        Block::from_id(self.block_id).expect("Corrupted voxel")
+        Block::from_id(self.block_id)
     }
 
     pub fn get_block_id(&self) -> u32 {
@@ -56,10 +56,6 @@ impl Voxel {
             Ok((result, _)) => return result,
             Err(_) => panic!("Corrupted voxel nbt"),
         }
-    }
-
-    pub fn is_air(&self) -> bool {
-        self.get_block().is_air_block()
     }
 }
 
@@ -82,7 +78,7 @@ impl VoxelRef<'_> {
 
     pub fn get_block(&self) -> Block {
         match self {
-            VoxelRef::Inferred(id) => Block::from_id(*id).expect("Corrupted voxel"),
+            VoxelRef::Inferred(id) => Block::from_id(*id),
             VoxelRef::Real(v) => v.get_block(),
         }
     }
@@ -95,10 +91,9 @@ impl VoxelRef<'_> {
     }
 
     pub fn get_nbt_data(&self) -> NbtTag {
-        return NbtTag::Null;
-    }
-
-    pub fn is_air(&self) -> bool {
-        self.get_block().is_air_block()
+        match self {
+            VoxelRef::Inferred(_) => NbtTag::Null,
+            VoxelRef::Real(v) => v.get_nbt_data(),
+        }
     }
 }

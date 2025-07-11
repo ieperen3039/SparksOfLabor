@@ -19,7 +19,7 @@ use minecraft_registries::block_property_registry::BlockPropertyRegistry;
 
 const CHUNK_B32_ENTRY_FLAG_BIT: u32 = 1 << 31;
 
-// compressed 2-ple enum using the 32th bit as a flag.
+// compressed 2-ple enum using the 32nd bit as a flag.
 // is a 31-bit
 #[derive(Serialize, Deserialize, Clone, Copy)]
 struct ChunkB32Entry {
@@ -32,7 +32,7 @@ impl ChunkB32Entry {
     }
 
     pub fn make_direct(value: u32) -> ChunkB32Entry {
-        assert!(value & CHUNK_B32_ENTRY_FLAG_BIT == 0);
+        assert_eq!(value & CHUNK_B32_ENTRY_FLAG_BIT, 0);
         ChunkB32Entry { value }
     }
 
@@ -73,7 +73,7 @@ pub struct Chunk16 {
 
 #[derive(Serialize, Deserialize)]
 enum Chunk16Grid {
-    // 2^16 = 65536 different element types, but there are only 4096 voxels per chunk.
+    // 2^16 = 65_536 different element types, but there are only 4096 voxels per chunk.
     // we instead put all simple voxels directly in the grid for 32 bits per voxel, and only map the advanced voxels
     B32(Box<[[[ChunkB32Entry; 16]; 16]; 16]>),
     // 2^8 = 256 different element types
@@ -91,10 +91,7 @@ fn from_internal(coord: ICoordinate, zero_coord: Coordinate, internal_step: i32)
 }
 
 impl Chunk16 {
-    pub fn new(location: Coordinate16, fill_value: mc_ids::Block) -> Chunk16 {
-        let fill_voxel = Voxel::from_block(fill_value);
-        let is_air = fill_voxel.is_air();
-
+    pub fn new(location: Coordinate16, fill_value: mc_ids::Block, is_air: bool) -> Chunk16 {
         Chunk16 {
             grid: Chunk16Grid::B0,
             palette: Palette::fill(fill_value.id()),
@@ -160,16 +157,17 @@ impl Chunk16 {
         return self.palette.get(id);
     }
 
-    pub fn set_voxel(&mut self, coord: Coordinate, voxel: Voxel) -> Result<(), VoxelIndexError> {
+    pub fn set_voxel(&mut self, coord: Coordinate, voxel: Voxel, registry: &BlockPropertyRegistry) -> Result<(), VoxelIndexError> {
         let internal_coord = self.to_internal(coord)?;
-        Ok(self.set_voxel_internal(internal_coord, voxel))
+        Ok(self.set_voxel_internal(internal_coord, voxel, registry))
     }
 
-    pub fn set_voxel_internal(&mut self, coord: ICoordinate, voxel: Voxel) {
+    pub fn set_voxel_internal(&mut self, coord: ICoordinate, voxel: Voxel, registry: &BlockPropertyRegistry) {
         let voxel_block_id = voxel.get_block_id();
         let voxel_is_simple = voxel.is_simple();
 
-        if !voxel.is_air() {
+        let voxel_is_air = registry.get_block_data(voxel.get_block()).is_air;
+        if !voxel_is_air {
             self.num_non_air_blocks += 1;
         }
 
@@ -242,28 +240,27 @@ impl Chunk16 {
             Chunk16Grid::B0 => 0,
         };
 
-        let old_block_id = self.palette.remove(old_id);
+        let old_block_id = mc_ids::Block::from_id(self.palette.remove(old_id));
 
-        let voxel_was_air = mc_ids::Block::from_id(old_block_id)
-            .expect("corrupted voxel in chunk")
-            .is_air_block();
-
+        let voxel_was_air = registry.get_block_data(old_block_id).is_air;
         if !voxel_was_air {
             // we removed a non-air block
             self.num_non_air_blocks -= 1;
         }
     }
 
-    pub fn from_minecraft(mc_chunk: &mc_chunk::Chunk, position: Coordinate16, block_entities: Vec<mc_blocks::BlockEntity>) -> Chunk16 {
+    pub fn from_minecraft(mc_chunk: &mc_chunk::Chunk, position: Coordinate16, block_entities: Vec<mc_blocks::BlockEntity>, registry: &BlockPropertyRegistry) -> Chunk16 {
         let mut chunk = match &mc_chunk.blocks {
             mc_chunk::PalettedData::Paletted { palette, indexed } => {
                 Chunk16::from_raw_palette(indexed, palette, position)
             },
             mc_chunk::PalettedData::Single { value } => {
                 // TODO from_id or from_state_id?
+                let block = mc_ids::Block::from_id(*value);
                 Chunk16::new(
                     position,
-                    mc_ids::Block::from_id(*value).expect("unknown block id"),
+                    block,
+                    registry.get_block_data(block).is_air
                 )
             },
             mc_chunk::PalettedData::Raw { values } => Chunk16::from_direct(values, position),
@@ -301,9 +298,9 @@ impl Chunk16 {
             .iter()
             .map(|v| {
                 mc_blocks::BlockEntity::new(
-                    v.relative_x as u8,
+                    v.relative_x,
                     self.zero_coordinate.y + (v.relative_y as i32),
-                    v.relative_z as u8,
+                    v.relative_z,
                     v.voxel.get_block(),
                     v.voxel.get_nbt_data(),
                 )
@@ -565,9 +562,9 @@ impl Chunk16 {
         };
 
         if max_len_of_downgrade <= PALETTE_HYSTERESIS_VALUE {
-            return 0;
+            0
         } else {
-            return max_len_of_downgrade - PALETTE_HYSTERESIS_VALUE;
+            max_len_of_downgrade - PALETTE_HYSTERESIS_VALUE
         }
     }
 

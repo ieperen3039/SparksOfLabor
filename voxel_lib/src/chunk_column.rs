@@ -6,6 +6,7 @@ use std::array::from_fn;
 
 use minecraft_protocol::components::chunk as mc_chunk;
 use minecraft_protocol::data::blocks::Block;
+use minecraft_registries::block_property_registry::BlockPropertyRegistry;
 use serde::{Deserialize, Serialize};
 
 // the protocol enforces 24 chunks per column.
@@ -42,7 +43,9 @@ impl ChunkColumn {
             chunk_sections: from_fn(|i| {
                 Chunk16::new(
                     Coordinate16::new(chunk_x_16, i as i32, chunk_z_16),
-                    minecraft_protocol::ids::blocks::Block::Air,
+                    Block::default(),
+                    // we assume the default block is an air block
+                    true,
                 )
             }),
             heightmap_motion_blocking: [[0; 16]; 16],
@@ -50,19 +53,18 @@ impl ChunkColumn {
         }
     }
 
-    pub fn set_chunk(&mut self, y_16: i32, chunk: Chunk16) {
-        self.update_heightmap(y_16, &chunk);
+    pub fn set_chunk(&mut self, y_16: i32, chunk: Chunk16, registry: &BlockPropertyRegistry) {
+        self.update_heightmap(y_16, &chunk, registry);
 
         self.chunk_sections[y_16 as usize] = chunk;
     }
 
-    fn update_heightmap(&mut self, y_16: i32, chunk: &Chunk16) {
+    fn update_heightmap(&mut self, y_16: i32, chunk: &Chunk16, registry: &BlockPropertyRegistry) {
         let highest_chunk_value = (y_16 + 1) * 16;
 
         for z in 0..16usize {
             for x in 0..16usize {
-                // we will assume that every surface is also blocking
-                // "WORLD_SURFACE = All blocks other than air, cave air and void air"
+                // "WORLD_SURFACE = All blocks other than air, cave air, and void air"
                 let mut blocking_found = false;
                 let mut surface_found = false;
 
@@ -82,9 +84,10 @@ impl ChunkColumn {
                     let block = chunk
                         .get_voxel_internal(ICoordinate::new(x, y, z))
                         .get_block();
+                    let block_properties = registry.get_block_data(block);
 
                     if !blocking_found {
-                        if !block.is_blocking() {
+                        if !block_properties.is_solid {
                             continue;
                         }
                         // first blocking block of the pillar
@@ -94,7 +97,7 @@ impl ChunkColumn {
                             break;
                         }
                         blocking_found = true;
-                    } else if block.is_air_block() {
+                    } else if block_properties.is_air {
                         self.heightmap_world_surface[z][x] = ((y_16 * 16) as u16) + (y as u16);
                         break;
                     }
