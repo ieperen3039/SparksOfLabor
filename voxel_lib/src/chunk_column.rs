@@ -1,9 +1,10 @@
 use crate::chunk16::Chunk16;
-use crate::vector_alias::{Coordinate16, ICoordinate};
-use crate::voxel::VoxelRef;
+use crate::vector_alias::{Coordinate, Coordinate16, ICoordinate};
+use crate::voxel::{Voxel, VoxelRef};
 use minecraft_protocol::components::blocks::BlockEntity;
 use std::array::from_fn;
 
+use crate::voxel_errors::VoxelIndexError;
 use minecraft_protocol::components::chunk as mc_chunk;
 use minecraft_protocol::data::blocks::Block;
 use minecraft_registries::block_property_registry::BlockPropertyRegistry;
@@ -54,12 +55,26 @@ impl ChunkColumn {
     }
 
     pub fn set_chunk(&mut self, y_16: i32, chunk: Chunk16, registry: &BlockPropertyRegistry) {
-        self.update_heightmap(y_16, &chunk, registry);
-
         self.chunk_sections[y_16 as usize] = chunk;
+        self.update_heightmap(y_16, registry);
     }
 
-    fn update_heightmap(&mut self, y_16: i32, chunk: &Chunk16, registry: &BlockPropertyRegistry) {
+    pub fn set_voxel(&mut self, coord: Coordinate, voxel: Voxel, registry: &BlockPropertyRegistry) -> Result<(), VoxelIndexError> {
+        let y_16 = coord.y / 16;
+        let chunk = &mut self.chunk_sections[y_16 as usize];
+
+        chunk.set_voxel(coord, voxel, registry)
+    }
+
+    pub fn get_voxel(&mut self, coord: Coordinate) -> Result<VoxelRef, VoxelIndexError> {
+        let y_16 = coord.y / 16;
+        let chunk = &self.chunk_sections[y_16 as usize];
+        chunk.get_voxel(coord)
+    }
+
+    fn update_heightmap(&mut self, y_16: i32, registry: &BlockPropertyRegistry) {
+        let chunk = &self.chunk_sections[y_16 as usize];
+
         let highest_chunk_value = (y_16 + 1) * 16;
 
         for z in 0..16usize {

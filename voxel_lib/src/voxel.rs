@@ -1,49 +1,42 @@
-use minecraft_protocol::{
-    data::blocks::Block,
-    nbt::{self, NbtTag},
-};
+use minecraft_protocol::data::block_states::BlockWithState;
+use minecraft_protocol::nbt::{self, NbtTag};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Formatter};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Voxel {
-    block_id: u32,
+    block_id: BlockWithState,
     nbt: Vec<u8>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum VoxelRef<'a> {
+    /// Reference to an existing Voxel object
     Real(&'a Voxel),
-    Inferred(u32),
+    /// A simple voxel may be constructed from the given id.
+    /// See `VoxelRef::get_block`
+    Inferred(BlockWithState),
 }
 
 impl Voxel {
-    pub fn from_nbt(id: u32, nbt: NbtTag) -> Voxel {
-        let mut voxel = Self::from_id(id);
+    pub fn from_nbt(id: BlockWithState, nbt: NbtTag) -> Voxel {
+        let mut voxel = Self::from_block(id);
         nbt.serialize(&mut voxel.nbt);
         return voxel;
     }
 
-    pub fn from_id(id: u32) -> Voxel {
+    pub fn from_block(block: BlockWithState) -> Voxel {
         Voxel {
-            block_id: id,
+            block_id: block,
             nbt: Vec::new(),
         }
-    }
-
-    pub fn from_block(block: Block) -> Voxel {
-        Self::from_id(block.id())
     }
 
     pub fn is_simple(&self) -> bool {
         self.nbt.is_empty()
     }
 
-    pub fn get_block(&self) -> Block {
-        Block::from_id(self.block_id)
-    }
-
-    pub fn get_block_id(&self) -> u32 {
+    pub fn get_block(&self) -> BlockWithState {
         self.block_id
     }
 
@@ -69,6 +62,7 @@ impl Debug for Voxel {
 }
 
 impl VoxelRef<'_> {
+    /// true if there is no nbt data on this block
     pub fn is_simple(&self) -> bool {
         match self {
             VoxelRef::Inferred(_) => true,
@@ -76,17 +70,10 @@ impl VoxelRef<'_> {
         }
     }
 
-    pub fn get_block(&self) -> Block {
-        match self {
-            VoxelRef::Inferred(id) => Block::from_id(*id),
-            VoxelRef::Real(v) => v.get_block(),
-        }
-    }
-
-    pub fn get_block_id(&self) -> u32 {
+    pub fn get_block(&self) -> BlockWithState {
         match self {
             VoxelRef::Inferred(id) => *id,
-            VoxelRef::Real(v) => v.get_block_id(),
+            VoxelRef::Real(v) => v.get_block(),
         }
     }
 

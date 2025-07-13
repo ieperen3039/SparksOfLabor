@@ -4,7 +4,7 @@
 use super::login::CommunicationError;
 use crate::game_loop::GameCommand;
 use crate::minecraft_connection::network;
-use crate::player_loop::{PlaceBlockCommand, PlayerCommand};
+use crate::player_handler::{PlaceBlockCommand, PlayerCommand};
 use minecraft_protocol::packets::play_clientbound::ClientboundPacket;
 use minecraft_protocol::packets::play_serverbound::ServerboundPacket;
 use minecraft_protocol::MinecraftPacketPart;

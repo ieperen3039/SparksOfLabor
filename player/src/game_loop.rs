@@ -1,6 +1,8 @@
 use crate::entities::entity_manager::EntityManager;
 use crate::game_event::{Event, ScheduledEvent};
 use crate::minecraft_connection::client_connection::ClientSendCommand;
+use crate::player_handler;
+use crate::player_handler::PlayerHandler;
 use crate::voxels::world::World;
 use minecraft_vanilla::registries::Registries;
 use sol_log_server::logger_mt::LoggerMt;
@@ -18,6 +20,8 @@ pub struct GameLoop {
     event_queue: BinaryHeap<ScheduledEvent>,
     world: World,
     entities: EntityManager,
+    player: PlayerHandler,
+    registries: Registries,
 }
 
 pub enum GameCommand {
@@ -41,7 +45,9 @@ impl GameLoop {
             client_comm_channel,
             world,
             entities: EntityManager::new(),
+            player: PlayerHandler::new(todo!(), logger),
             event_queue: BinaryHeap::new(),
+            registries,
         }
     }
 
@@ -54,10 +60,7 @@ impl GameLoop {
             // handle all incoming messages
             loop {
                 match self.message_queue.try_recv() {
-                    Ok(GameCommand::ImmediateEvent(e)) => self.event_queue.push(ScheduledEvent {
-                        tick: self.current_tick,
-                        event: e,
-                    }),
+                    Ok(GameCommand::ImmediateEvent(event)) => self.schedule_for_this_tick(event),
                     Ok(GameCommand::FutureEvent(e)) => {
                         self.event_queue.push(e);
                     },
@@ -94,7 +97,30 @@ impl GameLoop {
         }
     }
 
-    fn handle_event(&self, game_event: Event) {
-        todo!()
+    fn schedule_for_this_tick(&mut self, event: Event) {
+        self.event_queue.push(ScheduledEvent {
+            tick: self.current_tick,
+            event,
+        })
+    }
+
+    fn handle_event(&mut self, game_event: Event) {
+        let event = match game_event {
+            Event::VoxelChange { .. } => { None },
+            Event::VoxelUpdate { .. } => { None },
+            Event::EntityUpdate { .. } => { None },
+            Event::PlayerPlaceBlock(command) => {
+                player_handler::handle_block_place_event(
+                    command,
+                    &mut self.player,
+                    &self.world,
+                    &self.registries,
+                )
+            },
+        };
+
+        if let Some(event) = event {
+            self.schedule_for_this_tick(event);
+        }
     }
 }

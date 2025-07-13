@@ -1,3 +1,4 @@
+use crate::player_events::PlayerPlaceBlockEvent;
 use sol_network_lib::Tick;
 use sol_voxel_lib::vector_alias::Coordinate;
 use sol_voxel_lib::voxel::Voxel;
@@ -12,6 +13,7 @@ pub enum Event {
     VoxelChange { coord: Coordinate, new_voxel: Voxel },
     VoxelUpdate { coord: Coordinate },
     EntityUpdate { entity_id: u32 },
+    PlayerPlaceBlock(PlayerPlaceBlockEvent)
 }
 
 impl Ord for ScheduledEvent {

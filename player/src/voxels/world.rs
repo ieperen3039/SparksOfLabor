@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-
+use minecraft_protocol::data::block_states::BlockWithState;
 use sol_voxel_lib::chunk16::Chunk16;
 use sol_voxel_lib::{chunk_column::ChunkColumn, vector_alias::*};
+use std::collections::HashMap;
 
 pub struct World {
     chunks: HashMap<ChunkColumnCoordinate, Box<ChunkColumn>>,
@@ -22,8 +22,9 @@ impl World {
                 for y in 0..4 {
                     chunk_column.set_chunk(y, Chunk16::new(
                         Coordinate16::new(x, y, z),
-                        minecraft_protocol::ids::blocks::Block::Stone,
-                    ));
+                        minecraft_vanilla::ids::blocks::BlockId::Stone.into(),
+                        false
+                    ), todo!());
                 }
 
                 chunks.insert(
@@ -56,5 +57,15 @@ impl World {
         }
 
         return area;
+    }
+
+    pub fn get_block(&self, coord: Coordinate) -> Option<BlockWithState> {
+        let center_point = ChunkColumnCoordinate::containing_coord(&coord);
+        let chunk = self.get_chunk(&center_point);
+        if let Some(chunk) = chunk {
+            chunk.
+        } else {
+            None
+        }
     }
 }

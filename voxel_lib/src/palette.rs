@@ -1,5 +1,7 @@
 use minecraft_protocol::components::blocks as mc_blocks;
+use minecraft_protocol::data::block_states::BlockWithState;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::{
     vector_alias::ICoordinate,
@@ -25,7 +27,7 @@ enum MappingData {
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct BlockMapping {
-    block_id: u32,
+    block_id: BlockWithState,
     data: MappingData,
 }
 
@@ -47,7 +49,7 @@ impl Palette {
         }
     }
 
-    pub fn fill(fill_value: u32) -> Palette {
+    pub fn fill(fill_value: BlockWithState) -> Palette {
         Palette {
             base: vec![BlockMapping {
                 block_id: fill_value,
@@ -58,7 +60,7 @@ impl Palette {
         }
     }
 
-    pub fn add_simple(&mut self, block_id: u32) -> u16 {
+    pub fn add_simple(&mut self, block_id: BlockWithState) -> u16 {
         // first see if it is already in here
         for idx in 0..self.base.len() {
             let block_mapping = &mut self.base[idx];
@@ -113,7 +115,7 @@ impl Palette {
     }
 
     pub fn add_voxel(&mut self, voxel: Voxel, coord: ICoordinate) -> u16 {
-        let block_id = voxel.get_block_id();
+        let block_id = voxel.get_block();
         if voxel.is_simple() {
             return self.add_simple(block_id);
         }
@@ -139,7 +141,7 @@ impl Palette {
 
     // upgrades a previously added simple block into an nbt block.
     pub fn set_block_entity(&mut self, voxel: mc_blocks::BlockEntity, coord: ICoordinate) -> u16 {
-        let block_id = voxel.get_block().id();
+        let block_id = voxel.get_block() as BlockWithState;
         self.remove(
             self.find(block_id)
                 .expect("block entity overwrites block id not in this palette"),
@@ -164,7 +166,7 @@ impl Palette {
         self.add_id_internal(new_mapping)
     }
 
-    pub fn remove(&mut self, idx: u16) -> u32 {
+    pub fn remove(&mut self, idx: u16) -> BlockWithState {
         let elt = &mut self.base[idx as usize];
 
         let block_id = elt.block_id;
@@ -203,7 +205,7 @@ impl Palette {
         }
     }
 
-    pub fn find(&self, block_id: u32) -> Option<u16> {
+    pub fn find(&self, block_id: BlockWithState) -> Option<u16> {
         for idx in 0..self.base.len() {
             let elt = &self.base[idx];
             if elt.block_id == block_id {
@@ -214,21 +216,37 @@ impl Palette {
         unreachable!("Id not found")
     }
 
-    // the returned vector is the mapping from new indices to old indices
+    /// The returned vector is the mapping from old indices to new indices.
+    /// Removed indices will have the value `u16::MAX`
     pub fn remove_holes(&mut self) -> Vec<u16> {
-        let mut mapping = Vec::new();
+        // TODO also clean up the nbt_voxels list
+
+        let mut new_to_old = Vec::new();
         let mut new_base = Vec::new();
 
-        for (old_index, block_mapping) in self.base.iter().enumerate() {
+        for block_mapping in self.base.iter() {
             if !matches!(block_mapping.data, MappingData::Empty) {
+                let new_index = new_base.len() as u16;
                 new_base.push(block_mapping.clone());
-                mapping.push(old_index as u16);
+                new_to_old.push(new_index);
+            } else {
+                new_to_old.push(u16::MAX);
             }
         }
 
         self.base = new_base;
 
-        mapping
+        return new_to_old;
+    }
+
+    pub fn get_block_to_id_mapping(&self) -> HashMap<BlockWithState, u16> {
+        let mut mapping = HashMap::new();
+
+        for (id, block_mapping) in self.base.iter().enumerate() {
+            mapping.insert(block_mapping.block_id, id as u16);
+        }
+
+        return mapping;
     }
 
     pub fn set_to_zero(&mut self) {
@@ -239,7 +257,7 @@ impl Palette {
         }
 
         let mut only_element = BlockMapping {
-            block_id: 0,
+            block_id: BlockWithState::default(),
             data: MappingData::Empty,
         };
         for elt in &self.base {
@@ -257,7 +275,7 @@ impl Palette {
     }
 
     // returns every unique id of simple voxels
-    pub fn all_simple(&self) -> Vec<u32> {
+    pub fn all_simple(&self) -> Vec<BlockWithState> {
         self.base
             .iter()
             .filter(|m| matches!(m.data, MappingData::Simple { .. }))

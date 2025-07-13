@@ -7,14 +7,15 @@ mod game_logic;
 pub mod game_loop;
 mod item_stack;
 pub mod minecraft_connection;
-mod player_loop;
+mod player_handler;
 mod player_state;
 pub mod voxels;
+mod player_events;
 
 use crate::game_loop::GameCommand;
 use crate::minecraft_connection::client_connection::ClientSendCommand;
 use crate::minecraft_connection::client_connection::McClientSender;
-use crate::player_loop::PlayerCommand;
+use crate::player_handler::PlayerCommand;
 use crate::player_state::PlayerState;
 use minecraft_connection::{
     client_connection::McClientReceiver, player_character,
@@ -91,7 +92,7 @@ fn main() {
         client_comm_channel.clone(),
         registries.clone(),
     );
-    let mut player_loop = player_loop::PlayerLoop::new(
+    let mut player_loop = player_handler::PlayerHandler::new(
         player_state,
         logger.clone(),
         player_comm_receiver,
