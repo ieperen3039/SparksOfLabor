@@ -166,7 +166,7 @@ impl Chunk16 {
         let voxel_block_id = voxel.get_block_id();
         let voxel_is_simple = voxel.is_simple();
 
-        let voxel_is_air = registry.get_block_data(voxel.get_block()).is_air;
+        let voxel_is_air = registry.get_block_properties(voxel.get_block()).is_air;
         if !voxel_is_air {
             self.num_non_air_blocks += 1;
         }
@@ -242,7 +242,7 @@ impl Chunk16 {
 
         let old_block_id = mc_ids::Block::from_id(self.palette.remove(old_id));
 
-        let voxel_was_air = registry.get_block_data(old_block_id).is_air;
+        let voxel_was_air = registry.get_block_properties(old_block_id).is_air;
         if !voxel_was_air {
             // we removed a non-air block
             self.num_non_air_blocks -= 1;
@@ -260,7 +260,7 @@ impl Chunk16 {
                 Chunk16::new(
                     position,
                     block,
-                    registry.get_block_data(block).is_air
+                    registry.get_block_properties(block).is_air
                 )
             },
             mc_chunk::PalettedData::Raw { values } => Chunk16::from_direct(values, position),

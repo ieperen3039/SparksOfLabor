@@ -22,4 +22,5 @@ zmq = "0.10.0"
 rand = "0.8.5"
 simple-error = "0.2.3"
 minecraft-protocol = "*"
-minecraft-positions = "*"
+minecraft-registries = { path = "../../RustProjects/minecraft-protocol/minecraft-registries" }
+minecraft-vanilla = { path = "../../RustProjects/minecraft-protocol/minecraft-vanilla" }

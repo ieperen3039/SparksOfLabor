@@ -217,7 +217,7 @@ mod tests {
         assert_eq!(palette.len(), 2);
 
         let id5 = palette.set_block_entity(
-            BlockEntity::new(0, 0, 0, Block::from_id(2).unwrap(), NbtTag::Int(24)),
+            BlockEntity::new(0, 0, 0, Block::from_id(2), NbtTag::Int(24)),
             ICoordinate::new(0, 0, 0),
         );
 
@@ -225,7 +225,7 @@ mod tests {
 
         // location doesnt matter for palette
         let id6 = palette.set_block_entity(
-            BlockEntity::new(0, 0, 0, Block::from_id(2).unwrap(), NbtTag::Int(24)),
+            BlockEntity::new(0, 0, 0, Block::from_id(2), NbtTag::Int(24)),
             ICoordinate::new(0, 0, 0),
         );
 

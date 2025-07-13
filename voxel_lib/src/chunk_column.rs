@@ -84,7 +84,7 @@ impl ChunkColumn {
                     let block = chunk
                         .get_voxel_internal(ICoordinate::new(x, y, z))
                         .get_block();
-                    let block_properties = registry.get_block_data(block);
+                    let block_properties = registry.get_block_properties(block);
 
                     if !blocking_found {
                         if !block_properties.is_solid {

@@ -1,33 +1,35 @@
 use sol_network_lib::Tick;
-use sol_voxel_lib::vector_alias::Position;
+use sol_voxel_lib::vector_alias::Coordinate;
+use sol_voxel_lib::voxel::Voxel;
 use std::cmp::Ordering;
 
-pub struct GameEvent {
+pub struct ScheduledEvent {
     pub tick: Tick,
-    pub event: EventType,
+    pub event: Event,
 }
 
-pub enum EventType {
-    VoxelUpdate(Position),
+pub enum Event {
+    VoxelChange { coord: Coordinate, new_voxel: Voxel },
+    VoxelUpdate { coord: Coordinate },
     EntityUpdate { entity_id: u32 },
 }
 
-impl Ord for GameEvent {
+impl Ord for ScheduledEvent {
     fn cmp(&self, other: &Self) -> Ordering {
         self.tick.cmp(&other.tick)
     }
 }
 
-impl PartialOrd for GameEvent {
+impl PartialOrd for ScheduledEvent {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl PartialEq for GameEvent {
+impl PartialEq for ScheduledEvent {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
     }
 }
 
-impl Eq for GameEvent {}
+impl Eq for ScheduledEvent {}

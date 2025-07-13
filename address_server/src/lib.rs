@@ -4,4 +4,5 @@ pub mod static_addresses {
     // zmq addresses
     pub const LOG_SERVER : &str = "ipc://tmp/log_server";
     pub const WORLD_SERVER : &str = "ipc://tmp/world_server";
+    pub const PLAYER_DATA_SERVER: &str = "ipc://tmp/player_data_server";
 }

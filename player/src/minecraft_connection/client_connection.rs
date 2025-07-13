@@ -4,10 +4,12 @@
 use super::login::CommunicationError;
 use crate::game_loop::GameCommand;
 use crate::minecraft_connection::network;
+use crate::player_loop::{PlaceBlockCommand, PlayerCommand};
 use minecraft_protocol::packets::play_clientbound::ClientboundPacket;
 use minecraft_protocol::packets::play_serverbound::ServerboundPacket;
 use minecraft_protocol::MinecraftPacketPart;
 use sol_log_server::logger_mt::LoggerMt;
+use sol_voxel_lib::vector_alias::Coordinate;
 use std::io::Write;
 use std::net::TcpStream;
 use std::sync::mpsc;
@@ -15,7 +17,8 @@ use std::sync::mpsc;
 pub struct McClientReceiver {
     socket: TcpStream,
     logger: LoggerMt,
-    world_event_inbound_queue: mpsc::Sender<GameCommand>,
+    world_event_channel: mpsc::Sender<GameCommand>,
+    player_event_channel: mpsc::Sender<PlayerCommand>,
 }
 
 pub enum ClientSendCommand {
@@ -28,7 +31,7 @@ impl ClientSendCommand {
         msg: Packet,
     ) -> Result<Self, CommunicationError> {
         msg.serialize_minecraft_packet()
-            .map(|serialized| { ClientSendCommand::Message(serialized) })
+            .map(|serialized| ClientSendCommand::Message(serialized))
             .map_err(|e| CommunicationError::SerializationError(e.to_string()))
     }
 }
@@ -36,19 +39,21 @@ impl ClientSendCommand {
 pub struct McClientSender {
     socket: TcpStream,
     logger: LoggerMt,
-    client_comm_outbound_queue: mpsc::Receiver<ClientSendCommand>,
+    client_comm_queue: mpsc::Receiver<ClientSendCommand>,
 }
 
 impl McClientReceiver {
     pub fn new(
         socket: TcpStream,
         logger: LoggerMt,
-        world_event_inbound_queue: mpsc::Sender<GameCommand>,
+        world_event_channel: mpsc::Sender<GameCommand>,
+        player_event_channel: mpsc::Sender<PlayerCommand>,
     ) -> Self {
         McClientReceiver {
             socket,
             logger,
-            world_event_inbound_queue,
+            world_event_channel,
+            player_event_channel,
         }
     }
 
@@ -67,11 +72,38 @@ impl McClientReceiver {
                 },
             };
 
-            println!("Received {packet:?}");
+            // also avoids lifetime issues
+            let packet_name = format!("{:?}", packet);
+
+            println!("Received {packet_name}");
 
             let result = match packet {
-                ServerboundPacket::RequestPing { payload } => self.send_ping(payload),
-                ServerboundPacket::PlaceBlock { .. } => Ok(()),
+                ServerboundPacket::RequestPing { payload } => network::send_packet(
+                    &mut self.socket,
+                    ClientboundPacket::PingResponse { payload },
+                )
+                    .map_err(|e| CommunicationError::IoError(e)),
+                ServerboundPacket::PlaceBlock {
+                    hand,
+                    location,
+                    face,
+                    cursor_position_x,
+                    cursor_position_y,
+                    cursor_position_z,
+                    inside_block,
+                    sequence,
+                } => self
+                    .player_event_channel
+                    .send(PlayerCommand::PlaceBlock(PlaceBlockCommand {
+                        hand,
+                        location: Coordinate::new(location.x, location.y as i32, location.z),
+                        face,
+                        cursor_position_x,
+                        cursor_position_y,
+                        cursor_position_z,
+                        inside_block,
+                    }))
+                    .map_err(|e| CommunicationError::InternalError(format!("{e:?}"))),
                 ServerboundPacket::UseItem { .. } => Ok(()),
 
                 // may be ignored
@@ -131,17 +163,9 @@ impl McClientReceiver {
             };
 
             if result.is_err() {
-                println!("Error while handling message {packet:?}: {result:?}")
+                println!("Error while handling message {packet_name}: {result:?}")
             }
         }
-    }
-
-    fn send_ping(&mut self, payload: i64) -> Result<(), CommunicationError> {
-        network::send_packet(
-            &mut self.socket,
-            ClientboundPacket::PingResponse { payload },
-        )?;
-        Ok(())
     }
 }
 
@@ -149,18 +173,18 @@ impl McClientSender {
     pub fn new(
         socket: TcpStream,
         logger: LoggerMt,
-        client_comm_outbound_queue: mpsc::Receiver<ClientSendCommand>,
+        client_comm_queue: mpsc::Receiver<ClientSendCommand>,
     ) -> Self {
         McClientSender {
             socket,
             logger,
-            client_comm_outbound_queue,
+            client_comm_queue,
         }
     }
 
     pub fn execute_send(&mut self) {
         loop {
-            let command = self.client_comm_outbound_queue.recv().unwrap();
+            let command = self.client_comm_queue.recv().unwrap();
             match command {
                 ClientSendCommand::Stop => return,
                 ClientSendCommand::Message(msg) => {

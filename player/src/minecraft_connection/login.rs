@@ -31,6 +31,7 @@ pub enum CommunicationError {
     SerializationError(String),
     DeserializationError(String),
     IoError(io::Error),
+    InternalError(String),
 }
 
 impl CommunicationError {
